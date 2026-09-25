@@ -1,16 +1,16 @@
 //! 第4章 問題3: 非同期ジェネレーター
-//! 
+//!
 //! この問題では、非同期ジェネレーターパターンを学習します。
 //! 非同期でデータを段階的に生成し、メモリ効率的にストリーミング処理を行う方法を実装します。
 
 use futures::{Stream, StreamExt};
 use std::pin::Pin;
+use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use tokio::time::{sleep, Duration, Instant};
-use std::sync::{Arc, Mutex};
 
 /// 非同期ジェネレーターの基本実装
-/// 
+///
 /// 指定された範囲の数値を一定間隔で生成します
 pub struct AsyncNumberGenerator {
     current: usize,
@@ -39,7 +39,7 @@ impl Stream for AsyncNumberGenerator {
         }
 
         let now = Instant::now();
-        
+
         // 初回またはインターバル経過をチェック
         if let Some(last) = self.last_yield {
             if now.duration_since(last) < self.interval {
@@ -47,12 +47,12 @@ impl Stream for AsyncNumberGenerator {
                 let sleep_until = last + self.interval;
                 let waker = cx.waker().clone();
                 let duration = sleep_until.saturating_duration_since(now);
-                
+
                 tokio::spawn(async move {
                     sleep(duration).await;
                     waker.wake();
                 });
-                
+
                 return Poll::Pending;
             }
         }
@@ -60,7 +60,7 @@ impl Stream for AsyncNumberGenerator {
         self.last_yield = Some(now);
         let value = self.current;
         self.current += 1;
-        
+
         Poll::Ready(Some(value))
     }
 }
@@ -104,7 +104,7 @@ impl Stream for AsyncDatabaseStream {
         // 非同期処理の模擬（データベースI/O）
         let delay = self.processing_delay;
         let waker = cx.waker().clone();
-        
+
         tokio::spawn(async move {
             sleep(delay).await;
             waker.wake();
@@ -142,9 +142,10 @@ impl SystemMetricsStream {
 
     fn generate_metrics(&mut self) -> SystemMetrics {
         use std::f64::consts::PI;
-        
+
         let now = Instant::now();
-        let elapsed = self.last_poll
+        let elapsed = self
+            .last_poll
             .map(|last| now.duration_since(last).as_secs_f64())
             .unwrap_or(0.0);
 
@@ -167,26 +168,26 @@ impl Stream for SystemMetricsStream {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let now = Instant::now();
-        
+
         if let Some(last) = self.last_poll {
             if now.duration_since(last) < self.interval {
                 // インターバルが経過していない場合
                 let sleep_until = last + self.interval;
                 let waker = cx.waker().clone();
                 let duration = sleep_until.saturating_duration_since(now);
-                
+
                 tokio::spawn(async move {
                     sleep(duration).await;
                     waker.wake();
                 });
-                
+
                 return Poll::Pending;
             }
         }
 
         self.last_poll = Some(now);
         let metrics = self.generate_metrics();
-        
+
         Poll::Ready(Some(metrics))
     }
 }
@@ -253,7 +254,8 @@ impl Stream for BackpressureStream {
 
         // 新しいアイテムの生成タイミングをチェック
         let now = Instant::now();
-        let should_produce = self.last_produce
+        let should_produce = self
+            .last_produce
             .map(|last| now.duration_since(last) >= self.production_rate)
             .unwrap_or(true);
 
@@ -294,7 +296,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. 基本的な数値ジェネレーター
     println!("1. 基本的な数値ジェネレーター（1秒間隔で5個の数値を生成）");
     let mut number_gen = AsyncNumberGenerator::new(5, Duration::from_millis(500));
-    
+
     let start = Instant::now();
     while let Some(num) = number_gen.next().await {
         let elapsed = start.elapsed();
@@ -305,7 +307,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2. データベースストリーミング
     println!("2. データベースレコードのバッチストリーミング");
     let mut db_stream = AsyncDatabaseStream::new(10, 3, Duration::from_millis(200));
-    
+
     let mut batch_count = 0;
     while let Some(batch) = db_stream.next().await {
         batch_count += 1;
@@ -316,11 +318,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 3. システムメトリクス監視（5回のみ）
     println!("3. システムメトリクス監視（300ms間隔で5回）");
     let mut metrics_stream = SystemMetricsStream::new(Duration::from_millis(300));
-    
+
     for i in 0..5 {
         if let Some(metrics) = metrics_stream.next().await {
-            println!("  #{}: CPU: {:.1}%, Memory: {:.1}%, Disk I/O: {} KB", 
-                     i + 1, metrics.cpu_usage, metrics.memory_usage, metrics.disk_io);
+            println!(
+                "  #{}: CPU: {:.1}%, Memory: {:.1}%, Disk I/O: {} KB",
+                i + 1,
+                metrics.cpu_usage,
+                metrics.memory_usage,
+                metrics.disk_io
+            );
         }
     }
     println!("  完了: システムメトリクス監視\n");
@@ -328,12 +335,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 4. バックプレッシャー制御
     println!("4. バックプレッシャー制御ストリーム（バッファサイズ: 3, 生成間隔: 100ms）");
     let mut backpressure_stream = BackpressureStream::new(8, 3, Duration::from_millis(100));
-    
+
     let mut item_count = 0;
     while let Some(item) = backpressure_stream.next().await {
         item_count += 1;
         println!("  受信: {} (#{}/8)", item, item_count);
-        
+
         // 意図的に処理を遅延させてバックプレッシャーをテスト
         if item_count % 2 == 0 {
             println!("    処理遅延中...");
@@ -345,19 +352,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 5. ストリーム変換とフィルタリング
     println!("5. ストリーム変換とフィルタリングの例");
     let number_stream = AsyncNumberGenerator::new(10, Duration::from_millis(100));
-    
+
     let transformed: Vec<String> = number_stream
         .filter(|n| futures::future::ready(*n % 2 == 0)) // 偶数のみ
         .map(|n| format!("偶数: {}", n))
         .take(3) // 最初の3個のみ
         .collect()
         .await;
-    
+
     println!("  フィルタリング結果: {:?}", transformed);
     println!("  完了: ストリーム変換\n");
 
     println!("=== すべてのデモンストレーション完了 ===");
-    
+
     Ok(())
 }
 
@@ -369,7 +376,7 @@ mod tests {
     #[tokio::test]
     async fn test_async_number_generator() {
         let gen = AsyncNumberGenerator::new(3, Duration::from_millis(10));
-        
+
         let numbers: Vec<usize> = gen.collect().await;
         assert_eq!(numbers, vec![0, 1, 2]);
     }
@@ -377,12 +384,12 @@ mod tests {
     #[tokio::test]
     async fn test_database_stream() {
         let mut stream = AsyncDatabaseStream::new(5, 2, Duration::from_millis(1));
-        
+
         let mut batches = Vec::new();
         while let Some(batch) = stream.next().await {
             batches.push(batch);
         }
-        
+
         assert_eq!(batches.len(), 3); // 5個のレコードを2個ずつ: [2, 2, 1]
         assert_eq!(batches[0].len(), 2);
         assert_eq!(batches[1].len(), 2);
@@ -392,10 +399,10 @@ mod tests {
     #[tokio::test]
     async fn test_backpressure_stream() {
         let stream = BackpressureStream::new(5, 10, Duration::from_millis(1));
-        
+
         let items: Vec<String> = stream.collect().await;
         assert_eq!(items.len(), 5);
-        
+
         for (i, item) in items.iter().enumerate() {
             assert_eq!(item, &format!("item_{:06}", i));
         }
@@ -404,12 +411,12 @@ mod tests {
     #[tokio::test]
     async fn test_stream_transformation() {
         let stream = AsyncNumberGenerator::new(6, Duration::from_millis(1));
-        
+
         let even_numbers: Vec<usize> = stream
             .filter(|n| futures::future::ready(*n % 2 == 0))
             .collect()
             .await;
-        
+
         assert_eq!(even_numbers, vec![0, 2, 4]);
     }
 }
@@ -434,8 +441,16 @@ mod metrics_tests {
 
         let metrics = stream.generate_metrics();
 
-        assert!((metrics.cpu_usage - 30.0).abs() < 0.01, "{}", metrics.cpu_usage);
+        assert!(
+            (metrics.cpu_usage - 30.0).abs() < 0.01,
+            "{}",
+            metrics.cpu_usage
+        );
         let expected_memory = 50.0 + 15.0 * (std::f64::consts::PI / 4.0).sin();
-        assert!((metrics.memory_usage - expected_memory).abs() < 0.01, "{}", metrics.memory_usage);
+        assert!(
+            (metrics.memory_usage - expected_memory).abs() < 0.01,
+            "{}",
+            metrics.memory_usage
+        );
     }
 }

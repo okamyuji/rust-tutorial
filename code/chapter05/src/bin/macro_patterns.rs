@@ -1,5 +1,5 @@
 //! 高度なマクロパターンマッチング
-//! 
+//!
 //! より複雑なパターンマッチングテクニックを示します。
 
 use std::collections::HashMap;
@@ -39,7 +39,7 @@ macro_rules! impl_methods {
         struct $name:ident {
             $($field:ident: $type:ty),* $(,)?
         }
-        
+
         impl {
             $($methods:tt)*
         }
@@ -47,7 +47,7 @@ macro_rules! impl_methods {
         struct $name {
             $($field: $type),*
         }
-        
+
         impl $name {
             $($methods)*
         }
@@ -71,14 +71,14 @@ macro_rules! tuple_to_vec {
 macro_rules! parse_kvs {
     // エントリポイント
     (@parse $map:ident, ) => {};
-    
+
     // キー・バリューペアのパース
     // 値の型が混在しても1つの HashMap に入るよう、文字列に揃えて格納する
     (@parse $map:ident, $key:literal : $value:expr $(, $($rest:tt)*)?) => {
         $map.insert($key, $value.to_string());
         parse_kvs!(@parse $map, $($($rest)*)?);
     };
-    
+
     // メインマクロ
     ($($tokens:tt)*) => {{
         let mut map = HashMap::new();
@@ -148,7 +148,7 @@ fn main() {
     // トークン数のカウント
     println!("--- トークンカウント ---");
     println!("トークン数: {}", count_tts!(a b c d e));
-    
+
     // リバース
     println!("\n--- リバース ---");
     let reversed = reverse!([1 2 3 4 5]);
@@ -165,12 +165,12 @@ fn main() {
             x: f64,
             y: f64,
         }
-        
+
         impl {
             fn new(x: f64, y: f64) -> Self {
                 Self { x, y }
             }
-            
+
             fn distance(&self) -> f64 {
                 (self.x * self.x + self.y * self.y).sqrt()
             }
@@ -212,7 +212,9 @@ fn main() {
 
     impl Wrapper {
         fn new() -> Self {
-            Self { inner: vec![1, 2, 3, 4, 5] }
+            Self {
+                inner: vec![1, 2, 3, 4, 5],
+            }
         }
 
         delegate! {

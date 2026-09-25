@@ -1249,7 +1249,11 @@ mod tests {
 
         cache.reset_stats();
         assert_eq!(
-            (cache.hit_count(), cache.miss_count(), cache.expiration_count()),
+            (
+                cache.hit_count(),
+                cache.miss_count(),
+                cache.expiration_count()
+            ),
             (0, 0, 0)
         );
     }
@@ -1298,7 +1302,11 @@ mod tests {
     fn multilevel_counts_hits_per_level_and_misses() {
         let mut cache: MultiLevelCache<String, i32> = MultiLevelCache::new(1, 2);
         assert_eq!(
-            (cache.l1_hit_rate(), cache.l2_hit_rate(), cache.total_hit_rate()),
+            (
+                cache.l1_hit_rate(),
+                cache.l2_hit_rate(),
+                cache.total_hit_rate()
+            ),
             (0.0, 0.0, 0.0)
         );
         cache.set_multilevel(s("a"), 1).unwrap();
@@ -1308,7 +1316,10 @@ mod tests {
         assert_eq!(cache.get_multilevel(&s("a")), Some(1));
         assert_eq!(cache.get_multilevel(&s("zz")), None);
 
-        assert_eq!((cache.l1_hits, cache.l2_hits, cache.total_misses), (1, 1, 1));
+        assert_eq!(
+            (cache.l1_hits, cache.l2_hits, cache.total_misses),
+            (1, 1, 1)
+        );
         assert_eq!(cache.total_hits, 2);
         assert_eq!(cache.l1_hit_rate(), 1.0 / 3.0);
         assert_eq!(cache.l2_hit_rate(), 1.0 / 3.0);
@@ -1327,7 +1338,10 @@ mod tests {
     fn multilevel_hit_rates_with_only_hits() {
         let mut l1_only = multilevel_with_l1_a_and_l2_b();
         l1_only.get_multilevel(&s("a"));
-        assert_eq!((l1_only.l1_hit_rate(), l1_only.total_hit_rate()), (1.0, 1.0));
+        assert_eq!(
+            (l1_only.l1_hit_rate(), l1_only.total_hit_rate()),
+            (1.0, 1.0)
+        );
 
         let mut l2_only = multilevel_with_l1_a_and_l2_b();
         l2_only.get_multilevel(&s("b"));
@@ -1339,7 +1353,10 @@ mod tests {
         let mut l1_half = multilevel_with_l1_a_and_l2_b();
         l1_half.get_multilevel(&s("a"));
         l1_half.get_multilevel(&s("zz"));
-        assert_eq!((l1_half.l1_hit_rate(), l1_half.total_hit_rate()), (0.5, 0.5));
+        assert_eq!(
+            (l1_half.l1_hit_rate(), l1_half.total_hit_rate()),
+            (0.5, 0.5)
+        );
 
         let mut l2_half = multilevel_with_l1_a_and_l2_b();
         l2_half.get_multilevel(&s("b"));

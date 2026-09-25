@@ -1,9 +1,9 @@
 //! 復習問題3：型安全な単位系
-//! 
+//!
 //! コンパイル時に単位の整合性をチェックする型システムをマクロで実装します。
 
 use std::marker::PhantomData;
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, Div, Mul, Sub};
 
 // 単位の次元を表すトレイト
 pub trait Dimension {
@@ -15,7 +15,7 @@ macro_rules! define_unit {
     ($name:ident, $display:expr) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         pub struct $name;
-        
+
         impl Dimension for $name {
             const NAME: &'static str = $display;
         }
@@ -27,14 +27,14 @@ macro_rules! define_composite_unit {
     ($name:ident = $unit1:ident * $unit2:ident, $display:expr) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         pub struct $name;
-        
+
         impl Dimension for $name {
             const NAME: &'static str = $display;
         }
-        
+
         impl std::ops::Mul<Quantity<$unit2>> for Quantity<$unit1> {
             type Output = Quantity<$name>;
-            
+
             fn mul(self, rhs: Quantity<$unit2>) -> Self::Output {
                 Quantity {
                     value: self.value * rhs.value,
@@ -43,18 +43,18 @@ macro_rules! define_composite_unit {
             }
         }
     };
-    
+
     ($name:ident = $unit1:ident / $unit2:ident, $display:expr) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         pub struct $name;
-        
+
         impl Dimension for $name {
             const NAME: &'static str = $display;
         }
-        
+
         impl std::ops::Div<Quantity<$unit2>> for Quantity<$unit1> {
             type Output = Quantity<$name>;
-            
+
             fn div(self, rhs: Quantity<$unit2>) -> Self::Output {
                 Quantity {
                     value: self.value / rhs.value,
@@ -79,7 +79,7 @@ impl<U: Dimension> Quantity<U> {
             _unit: PhantomData,
         }
     }
-    
+
     pub fn value(&self) -> f64 {
         self.value
     }
@@ -88,7 +88,7 @@ impl<U: Dimension> Quantity<U> {
 // 同じ単位同士の演算
 impl<U: Dimension> Add for Quantity<U> {
     type Output = Self;
-    
+
     fn add(self, rhs: Self) -> Self::Output {
         Quantity::new(self.value + rhs.value)
     }
@@ -96,7 +96,7 @@ impl<U: Dimension> Add for Quantity<U> {
 
 impl<U: Dimension> Sub for Quantity<U> {
     type Output = Self;
-    
+
     fn sub(self, rhs: Self) -> Self::Output {
         Quantity::new(self.value - rhs.value)
     }
@@ -105,7 +105,7 @@ impl<U: Dimension> Sub for Quantity<U> {
 // スカラーとの演算
 impl<U: Dimension> Mul<f64> for Quantity<U> {
     type Output = Self;
-    
+
     fn mul(self, rhs: f64) -> Self::Output {
         Quantity::new(self.value * rhs)
     }
@@ -113,7 +113,7 @@ impl<U: Dimension> Mul<f64> for Quantity<U> {
 
 impl<U: Dimension> Div<f64> for Quantity<U> {
     type Output = Self;
-    
+
     fn div(self, rhs: f64) -> Self::Output {
         Quantity::new(self.value / rhs)
     }
@@ -205,7 +205,10 @@ define_conversion!(Hour -> Second: 3600.0, to_second);
 define_conversion!(Minute -> Second: 60.0, to_second);
 
 // 物理計算の例
-fn calculate_kinetic_energy(mass: Quantity<Kilogram>, velocity: Quantity<MeterPerSecond>) -> Quantity<Joule> {
+fn calculate_kinetic_energy(
+    mass: Quantity<Kilogram>,
+    velocity: Quantity<MeterPerSecond>,
+) -> Quantity<Joule> {
     // E = 1/2 * m * v²
     // 注：v² の単位 m²/s² は型として定義していないため、数値で計算する
     let speed = velocity.value();
@@ -225,7 +228,7 @@ fn main() {
     let distance = meters(100.0);
     let time = seconds(10.0);
     let mass = kilograms(5.0);
-    
+
     println!("距離: {}", distance);
     println!("時間: {}", time);
     println!("質量: {}", mass);
@@ -236,7 +239,7 @@ fn main() {
     let d2 = meters(30.0);
     let total_distance = d1 + d2;
     let difference = d1 - d2;
-    
+
     println!("{} + {} = {}", d1, d2, total_distance);
     println!("{} - {} = {}", d1, d2, difference);
 
@@ -284,7 +287,7 @@ fn main() {
     println!("以下はコンパイルエラーになります：");
     println!("// let invalid = distance + time;  // 異なる単位は加算できない");
     println!("// let invalid = distance + mass;   // 異なる単位は加算できない");
-    
+
     // スカラー演算
     println!("\n--- スカラーとの演算 ---");
     let doubled = distance * 2.0;
@@ -297,12 +300,12 @@ fn main() {
     let initial_velocity = meters(0.0) / seconds(1.0);
     let final_velocity = meters(20.0) / seconds(1.0);
     let time_elapsed = seconds(5.0);
-    
+
     let avg_acceleration = (final_velocity - initial_velocity) / time_elapsed;
     println!("平均加速度: {}", avg_acceleration);
 
-    let distance_traveled = initial_velocity * time_elapsed + 
-                           avg_acceleration * time_elapsed * time_elapsed * 0.5;
+    let distance_traveled =
+        initial_velocity * time_elapsed + avg_acceleration * time_elapsed * time_elapsed * 0.5;
     println!("移動距離: {}", distance_traveled);
 
     println!("\n型安全な単位系の実装完了！");
@@ -317,7 +320,7 @@ mod tests {
     fn test_basic_units() {
         let d = meters(10.0);
         assert_eq!(d.value(), 10.0);
-        
+
         let t = seconds(5.0);
         assert_eq!(t.value(), 5.0);
     }

@@ -1,5 +1,5 @@
 //! 復習問題1：カスタムアサートマクロ
-//! 
+//!
 //! 条件をチェックし、失敗時にカスタムメッセージを表示するマクロを実装します。
 
 // カスタムアサートマクロの実装
@@ -8,7 +8,7 @@ macro_rules! assert_custom {
     ($cond:expr) => {
         assert_custom!($cond, "Assertion failed: {}", stringify!($cond));
     };
-    
+
     // メッセージ付き
     ($cond:expr, $($arg:tt)*) => {
         if !$cond {
@@ -20,43 +20,43 @@ macro_rules! assert_custom {
 // 比較演算子付きアサート
 macro_rules! assert_op {
     ($left:expr, $op:tt, $right:expr) => {
-        assert_op!($left, $op, $right, 
+        assert_op!($left, $op, $right,
             "Assertion failed: {} {} {} (left: {:?}, right: {:?})",
             stringify!($left), stringify!($op), stringify!($right),
             $left, $right
         );
     };
-    
+
     ($left:expr, ==, $right:expr, $($msg:tt)*) => {
         if !($left == $right) {
             panic!($($msg)*);
         }
     };
-    
+
     ($left:expr, !=, $right:expr, $($msg:tt)*) => {
         if !($left != $right) {
             panic!($($msg)*);
         }
     };
-    
+
     ($left:expr, <, $right:expr, $($msg:tt)*) => {
         if !($left < $right) {
             panic!($($msg)*);
         }
     };
-    
+
     ($left:expr, >, $right:expr, $($msg:tt)*) => {
         if !($left > $right) {
             panic!($($msg)*);
         }
     };
-    
+
     ($left:expr, <=, $right:expr, $($msg:tt)*) => {
         if !($left <= $right) {
             panic!($($msg)*);
         }
     };
-    
+
     ($left:expr, >=, $right:expr, $($msg:tt)*) => {
         if !($left >= $right) {
             panic!($($msg)*);
@@ -68,8 +68,13 @@ macro_rules! assert_op {
 macro_rules! assert_debug {
     ($cond:expr) => {
         if !$cond {
-            panic!("Assertion failed at {}:{}\n  Condition: {}\n  Value: {:?}",
-                file!(), line!(), stringify!($cond), $cond);
+            panic!(
+                "Assertion failed at {}:{}\n  Condition: {}\n  Value: {:?}",
+                file!(),
+                line!(),
+                stringify!($cond),
+                $cond
+            );
         }
     };
 }
@@ -80,7 +85,7 @@ macro_rules! assert_in_range {
         assert_in_range!($value, $min, $max,
             "Value {} is not in range [{}, {}]", $value, $min, $max);
     };
-    
+
     ($value:expr, $min:expr, $max:expr, $($msg:tt)*) => {
         if !($min..=$max).contains(&$value) {
             panic!($($msg)*);
@@ -93,16 +98,19 @@ macro_rules! assert_err {
     ($result:expr) => {
         match $result {
             Ok(val) => panic!("Expected Err, but got Ok({:?})", val),
-            Err(_) => {},
+            Err(_) => {}
         }
     };
-    
+
     ($result:expr, $expected_err:pat) => {
         match $result {
             Ok(val) => panic!("Expected Err, but got Ok({:?})", val),
-            Err($expected_err) => {},
-            Err(e) => panic!("Expected error pattern {}, but got {:?}", 
-                stringify!($expected_err), e),
+            Err($expected_err) => {}
+            Err(e) => panic!(
+                "Expected error pattern {}, but got {:?}",
+                stringify!($expected_err),
+                e
+            ),
         }
     };
 }
@@ -112,7 +120,7 @@ macro_rules! assert_approx_eq {
     ($left:expr, $right:expr) => {
         assert_approx_eq!($left, $right, 1e-6);
     };
-    
+
     ($left:expr, $right:expr, $tolerance:expr) => {{
         // 型のない浮動小数点リテラルでは abs() の型が決まらないため f64 に揃える。各式の評価も1回に限る
         let (left, right, tolerance) = ($left as f64, $right as f64, $tolerance as f64);
@@ -129,11 +137,9 @@ macro_rules! assert_panics {
     ($body:expr) => {
         assert_panics!($body, "Expected panic, but no panic occurred");
     };
-    
+
     ($body:expr, $msg:expr) => {
-        let result = std::panic::catch_unwind(|| {
-            $body
-        });
+        let result = std::panic::catch_unwind(|| $body);
         if result.is_ok() {
             panic!($msg);
         }
@@ -183,7 +189,7 @@ fn main() {
     println!("\n--- エラー型アサート ---");
     let result: Result<i32, &str> = Err("エラーが発生");
     assert_err!(result);
-    
+
     let specific_err: Result<i32, &str> = Err("特定のエラー");
     assert_err!(specific_err, "特定のエラー");
     println!("✓ エラーアサートが成功");

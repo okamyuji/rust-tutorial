@@ -24,21 +24,21 @@ impl Drop for Buffer {
 
 fn main() {
     println!("=== ムーブセマンティクスの詳細 ===\n");
-    
+
     // 基本的なムーブ
     let buf1 = Buffer::new("buf1", 1024);
     let buf2 = buf1; // ムーブ発生
     println!("buf2を使用: {}", buf2.name);
     // buf1は使用不可
-    
+
     println!("\n--- 関数呼び出しでのムーブ ---");
-    
+
     let buf3 = Buffer::new("buf3", 2048);
     process_buffer(buf3); // 所有権が関数に移動
-    // buf3はもう使えない
-    
+                          // buf3はもう使えない
+
     println!("\n--- 所有権を返す関数 ---");
-    
+
     let buf4 = create_buffer("buf4", 512);
     let buf5 = modify_and_return(buf4);
     println!("返されたバッファ: {}", buf5.name);

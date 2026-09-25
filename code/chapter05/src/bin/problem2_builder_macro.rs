@@ -1,5 +1,5 @@
 //! 復習問題2：ビルダーパターンマクロ
-//! 
+//!
 //! 構造体に対してビルダーパターンを自動生成するマクロを作成します。
 
 // ビルダーパターンを生成するマクロ
@@ -39,7 +39,7 @@ macro_rules! create_builder {
             }
         }
 
-        // ビルダーの実装  
+        // ビルダーの実装
         impl $builder_name {
             $(
                 #[doc = concat!("Set the ", stringify!($field_name), " field")]
@@ -186,7 +186,10 @@ impl Product {
 impl ProductBuilder {
     pub fn name(mut self, value: String) -> Result<Self, BuilderError> {
         if value.is_empty() {
-            return Err(BuilderError::ValidationFailed("name", "Name cannot be empty"));
+            return Err(BuilderError::ValidationFailed(
+                "name",
+                "Name cannot be empty",
+            ));
         }
         self.name = Some(value);
         Ok(self)
@@ -194,7 +197,10 @@ impl ProductBuilder {
 
     pub fn price(mut self, value: f64) -> Result<Self, BuilderError> {
         if value <= 0.0 {
-            return Err(BuilderError::ValidationFailed("price", "Price must be positive"));
+            return Err(BuilderError::ValidationFailed(
+                "price",
+                "Price must be positive",
+            ));
         }
         self.price = Some(value);
         Ok(self)
@@ -202,7 +208,10 @@ impl ProductBuilder {
 
     pub fn quantity(mut self, value: u32) -> Result<Self, BuilderError> {
         if value == 0 {
-            return Err(BuilderError::ValidationFailed("quantity", "Quantity must be greater than 0"));
+            return Err(BuilderError::ValidationFailed(
+                "quantity",
+                "Quantity must be greater than 0",
+            ));
         }
         self.quantity = Some(value);
         Ok(self)
@@ -217,8 +226,12 @@ impl ProductBuilder {
         Ok(Product {
             name: self.name.ok_or(BuilderError::MissingField("name"))?,
             price: self.price.ok_or(BuilderError::MissingField("price"))?,
-            quantity: self.quantity.ok_or(BuilderError::MissingField("quantity"))?,
-            category: self.category.ok_or(BuilderError::MissingField("category"))?,
+            quantity: self
+                .quantity
+                .ok_or(BuilderError::MissingField("quantity"))?,
+            category: self
+                .category
+                .ok_or(BuilderError::MissingField("category"))?,
         })
     }
 }
@@ -232,7 +245,7 @@ fn demonstrate_builders() -> Result<(), Box<dyn std::error::Error>> {
         .age(30)
         .active(true)
         .build()?;
-    
+
     println!("ユーザー: {:?}", user);
 
     // デフォルト値付きビルダー
@@ -240,7 +253,7 @@ fn demonstrate_builders() -> Result<(), Box<dyn std::error::Error>> {
         .host("example.com".to_string())
         .debug(true)
         .build();
-    
+
     println!("設定: {:?}", config);
 
     // 検証付きビルダー
@@ -250,7 +263,7 @@ fn demonstrate_builders() -> Result<(), Box<dyn std::error::Error>> {
         .quantity(10)?
         .category("電子機器".to_string())?
         .build()?;
-    
+
     println!("商品: {:?}", product);
 
     Ok(())
@@ -266,7 +279,7 @@ fn main() {
         .email("bob@example.com".to_string())
         .age(25)
         .active(false)
-        .build() 
+        .build()
     {
         Ok(user) => println!("✓ ユーザー作成成功: {:?}", user),
         Err(e) => println!("✗ エラー: {}", e),
@@ -278,7 +291,7 @@ fn main() {
         .name("Charlie".to_string())
         .email("charlie@example.com".to_string())
         // ageとactiveが欠落
-        .build() 
+        .build()
     {
         Ok(_) => println!("✗ 予期しない成功"),
         Err(e) => println!("✓ 期待通りのエラー: {}", e),
@@ -289,7 +302,7 @@ fn main() {
     let config = Config::builder()
         .host("api.example.com".to_string())
         .build();
-    
+
     println!("✓ 設定作成成功:");
     println!("  Host: {}", config.host);
     println!("  Port: {} (デフォルト)", config.port);
@@ -357,17 +370,15 @@ mod tests {
 
     #[test]
     fn test_missing_field() {
-        let result = User::builder()
-            .name("Test".to_string())
-            .build();
-        
+        let result = User::builder().name("Test".to_string()).build();
+
         assert!(result.is_err());
     }
 
     #[test]
     fn test_default_values() {
         let config = Config::builder().build();
-        
+
         assert_eq!(config.host, "localhost");
         assert_eq!(config.port, 8080);
         assert!(!config.debug);
@@ -378,7 +389,10 @@ mod tests {
         let user_builder: UserBuilder = User::builder();
         let config: Config = ConfigBuilder::default().port(9090).timeout(5).build();
 
-        assert!(user_builder.email("a@example.com".to_string()).build().is_err());
+        assert!(user_builder
+            .email("a@example.com".to_string())
+            .build()
+            .is_err());
         assert_eq!((config.port, config.timeout), (9090, 5));
         assert_eq!(config.host, "localhost");
     }

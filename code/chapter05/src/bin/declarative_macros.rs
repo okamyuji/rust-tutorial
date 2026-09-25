@@ -1,5 +1,5 @@
 //! 宣言的マクロ（macro_rules!）の基礎
-//! 
+//!
 //! このプログラムは、Rustの宣言的マクロの基本的な使い方を示します。
 
 // 基本的なマクロ：引数なし
@@ -62,26 +62,26 @@ macro_rules! flexible_macro {
 
 // ブロックを受け取るマクロ
 macro_rules! with_timing {
-    ($name:expr, $block:block) => {
-        {
-            use std::time::Instant;
-            let start = Instant::now();
-            let result = $block;
-            let duration = start.elapsed();
-            println!("{} の実行時間: {:?}", $name, duration);
-            result
-        }
-    };
+    ($name:expr, $block:block) => {{
+        use std::time::Instant;
+        let start = Instant::now();
+        let result = $block;
+        let duration = start.elapsed();
+        println!("{} の実行時間: {:?}", $name, duration);
+        result
+    }};
 }
 
 // 型の名前を表示するマクロ
 macro_rules! print_type_of {
-    ($val:expr) => {
-        {
-            let val = &$val;
-            println!("{} の型: {}", stringify!($val), std::any::type_name_of_val(val));
-        }
-    };
+    ($val:expr) => {{
+        let val = &$val;
+        println!(
+            "{} の型: {}",
+            stringify!($val),
+            std::any::type_name_of_val(val)
+        );
+    }};
 }
 
 fn main() {
@@ -133,7 +133,7 @@ fn main() {
     let number = 42;
     let text = "Hello";
     let vec_data = vec![1, 2, 3];
-    
+
     print_type_of!(number);
     print_type_of!(text);
     print_type_of!(vec_data);

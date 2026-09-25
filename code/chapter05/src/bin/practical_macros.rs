@@ -1,9 +1,9 @@
 //! 実用的なマクロ集
-//! 
+//!
 //! 実際の開発で役立つマクロパターンを示します。
 
-use std::time::{Duration, Instant};
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 // 時間計測マクロ
 macro_rules! measure_time {
@@ -125,7 +125,8 @@ macro_rules! simple_builder {
 }
 
 // 遅延評価マクロ
-macro_rules! lazy_static {
+// rustfmt は lazy_static! という名前の呼び出しを static ref 形式に書き換えるため、別名にしている
+macro_rules! lazy_value {
     ($name:ident : $type:ty = $init:expr) => {
         fn $name() -> &'static $type {
             // static mut と unsafe を使わず、初回だけ初期化する標準の OnceLock に任せる
@@ -140,7 +141,7 @@ macro_rules! assert_matches {
     ($expr:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
         match $expr {
             $pattern $(if $guard)? => {},
-            ref val => panic!("assertion failed: `{:?}` does not match `{}`", 
+            ref val => panic!("assertion failed: `{:?}` does not match `{}`",
                 val, stringify!($pattern)),
         }
     };
@@ -167,13 +168,13 @@ macro_rules! retry {
 macro_rules! memoize {
     ($name:ident, $arg_type:ty, $ret_type:ty, $body:expr) => {
         fn $name(arg: $arg_type) -> $ret_type {
-            use std::collections::HashMap;
             use std::cell::RefCell;
-            
+            use std::collections::HashMap;
+
             thread_local! {
                 static CACHE: RefCell<HashMap<$arg_type, $ret_type>> = RefCell::new(HashMap::new());
             }
-            
+
             // 本体は自分自身を再帰呼び出しするため、借用を保持したまま評価すると二重借用で panic する
             if let Some(hit) = CACHE.with(|cache| cache.borrow().get(&arg).cloned()) {
                 return hit;
@@ -309,11 +310,11 @@ fn main() {
 
     // 遅延評価
     println!("\n--- 遅延評価 ---");
-    lazy_static!(expensive_data: Vec<i32> = {
+    lazy_value!(expensive_data: Vec<i32> = {
         println!("高コストな初期化を実行");
         vec![1, 2, 3, 4, 5]
     });
-    
+
     println!("初回アクセス: {:?}", expensive_data());
     println!("2回目アクセス: {:?}", expensive_data());
 
@@ -341,22 +342,16 @@ fn main() {
         timeout: Duration = Duration::from_secs(30),
     }
 
-    let config = Config::new()
-        .port(3000)
-        .debug(true);
-    
-    println!("設定: host={}, port={}, debug={}", 
-        config.host, config.port, config.debug);
+    let config = Config::new().port(3000).debug(true);
+
+    println!(
+        "設定: host={}, port={}, debug={}",
+        config.host, config.port, config.debug
+    );
 
     // パイプライン
     println!("\n--- パイプライン ---");
-    let result = pipe!(
-        5,
-        |x| x * 2,
-        |x| x + 10,
-        |x| x as f64,
-        |x: f64| x.sqrt()
-    );
+    let result = pipe!(5, |x| x * 2, |x| x + 10, |x| x as f64, |x: f64| x.sqrt());
     println!("パイプライン結果: {}", result);
 
     // メモ化（フィボナッチ）
@@ -365,7 +360,7 @@ fn main() {
         match n {
             0 => 0,
             1 => 1,
-            _ => fib_memo(n - 1) + fib_memo(n - 2)
+            _ => fib_memo(n - 1) + fib_memo(n - 2),
         }
     });
 
@@ -391,13 +386,13 @@ fn main() {
         .name("Bob".to_string())
         .age(25)
         .email("bob@example.com".to_string());
-    
+
     println!("Person: {:?}", person);
 
     // スレッドセーフカウンター
     println!("\n--- スレッドセーフカウンター ---");
     thread_safe_counter!(Counter);
-    
+
     let counter = Counter::new();
     counter.increment();
     counter.increment();
@@ -425,7 +420,9 @@ mod tests {
             "ok": true
         });
 
-        let JsonValue::Object(map) = value else { panic!("object expected") };
+        let JsonValue::Object(map) = value else {
+            panic!("object expected")
+        };
         assert!(matches!(&map["scores"], JsonValue::Array(items)
             if matches!(items.as_slice(), [JsonValue::Number(a), JsonValue::Number(b)] if *a == 1.0 && *b == 2.0)));
         assert!(matches!(&map["address"], JsonValue::Object(inner)
@@ -440,7 +437,11 @@ mod tests {
     }
 
     memoize!(memo_fib, u64, u64, |n: u64| -> u64 {
-        if n < 2 { n } else { memo_fib(n - 1) + memo_fib(n - 2) }
+        if n < 2 {
+            n
+        } else {
+            memo_fib(n - 1) + memo_fib(n - 2)
+        }
     });
 
     #[test]

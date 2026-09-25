@@ -1,5 +1,5 @@
 //! const関数とコンパイル時計算
-//! 
+//!
 //! コンパイル時に実行される関数と定数評価の仕組みを示します。
 
 // 基本的なconst関数
@@ -26,7 +26,11 @@ const fn fibonacci(n: u32) -> u32 {
 
 // 最大値を求めるconst関数
 const fn const_max(a: i32, b: i32) -> i32 {
-    if a > b { a } else { b }
+    if a > b {
+        a
+    } else {
+        b
+    }
 }
 
 // 配列操作のconst関数

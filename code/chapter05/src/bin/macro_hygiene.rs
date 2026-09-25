@@ -1,5 +1,5 @@
 //! マクロの衛生性（Hygiene）
-//! 
+//!
 //! Rustのマクロがどのように変数のスコープと名前の衝突を防ぐかを示します。
 
 // 基本的な衛生性の例
@@ -86,12 +86,10 @@ macro_rules! unhygienic {
 
 // クロージャとマクロの相互作用
 macro_rules! create_closure {
-    ($capture:expr) => {
-        {
-            let x = 10;  // マクロ内のx
-            move || $capture + x  // $captureは呼び出し元のスコープ
-        }
-    };
+    ($capture:expr) => {{
+        let x = 10; // マクロ内のx
+        move || $capture + x // $captureは呼び出し元のスコープ
+    }};
 }
 
 // ライフタイムの衛生性
@@ -130,7 +128,7 @@ fn main() {
     // 基本的な衛生性
     println!("--- 基本的な衛生性 ---");
     let x = 10;
-    let result = hygienic_let!(x * 2);  // 呼び出し元のx（10）が使われる
+    let result = hygienic_let!(x * 2); // 呼び出し元のx（10）が使われる
     println!("結果: {} (マクロ内のxではなく、外側のxが使われる)", result);
 
     // 非衛生的な識別子

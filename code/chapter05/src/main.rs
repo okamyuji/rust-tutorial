@@ -1,5 +1,5 @@
 //! 第5章：マクロとメタプログラミング
-//! 
+//!
 //! このプログラムは、Rustのマクロシステムの概要を示します。
 //! 各サンプルプログラムを個別に実行して、詳細を学習してください。
 
@@ -36,8 +36,13 @@ macro_rules! debug_print {
     ($val:expr) => {
         #[cfg(debug_assertions)]
         {
-            eprintln!("[{}:{}] {} = {:?}", 
-                file!(), line!(), stringify!($val), $val);
+            eprintln!(
+                "[{}:{}] {} = {:?}",
+                file!(),
+                line!(),
+                stringify!($val),
+                $val
+            );
         }
     };
 }
@@ -56,7 +61,7 @@ fn main() {
         "Bob" => 87,
         "Charlie" => 95
     };
-    
+
     println!("\nスコア一覧:");
     for (name, score) in &scores {
         println!("{}: {}", name, score);
@@ -78,7 +83,7 @@ fn main() {
     println!("- cargo run --bin macro_hygiene");
     println!("- cargo run --bin debugging_macros");
     println!("- cargo run --bin practical_macros");
-    
+
     println!("\n復習問題:");
     println!("- cargo run --bin problem1_custom_assert");
     println!("- cargo run --bin problem2_builder_macro");
@@ -90,6 +95,6 @@ const fn const_fibonacci(n: u32) -> u32 {
     match n {
         0 => 0,
         1 => 1,
-        _ => const_fibonacci(n - 1) + const_fibonacci(n - 2)
+        _ => const_fibonacci(n - 1) + const_fibonacci(n - 2),
     }
 }

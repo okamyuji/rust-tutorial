@@ -1,5 +1,5 @@
 //! 第4章 問題5: 非同期ウェブスクレイパー
-//! 
+//!
 //! この問題では、非同期プログラミングの実践的な応用として、
 //! ウェブスクレイピングツールを実装します。並行処理、エラーハンドリング、
 //! レート制限、リトライ機能など、実際のアプリケーションで必要な機能を学習します。
@@ -9,7 +9,7 @@ use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tokio::sync::{Semaphore, RwLock};
+use tokio::sync::{RwLock, Semaphore};
 use tokio::time::{sleep, timeout};
 use url::Url;
 
@@ -86,7 +86,7 @@ impl RateLimitedClient {
         {
             let mut history = self.request_history.write().await;
             history.push(Instant::now());
-            
+
             // 古い履歴をクリーンアップ（過去1分間のみ保持）
             let cutoff = Instant::now() - Duration::from_secs(60);
             history.retain(|&timestamp| timestamp > cutoff);
@@ -97,7 +97,7 @@ impl RateLimitedClient {
 
     async fn enforce_rate_limit(&self) {
         let history = self.request_history.read().await;
-        
+
         if let Some(&last_request) = history.last() {
             let elapsed = last_request.elapsed();
             if elapsed < self.config.delay_between_requests {
@@ -112,12 +112,14 @@ impl RateLimitedClient {
     pub async fn get_request_stats(&self) -> RequestStats {
         let history = self.request_history.read().await;
         let now = Instant::now();
-        
-        let last_minute = history.iter()
+
+        let last_minute = history
+            .iter()
             .filter(|&&timestamp| now.duration_since(timestamp) < Duration::from_secs(60))
             .count();
-        
-        let last_hour = history.iter()
+
+        let last_hour = history
+            .iter()
             .filter(|&&timestamp| now.duration_since(timestamp) < Duration::from_secs(3600))
             .count();
 
@@ -125,7 +127,8 @@ impl RateLimitedClient {
             requests_last_minute: last_minute,
             requests_last_hour: last_hour,
             total_requests: history.len(),
-            active_connections: self.config.max_concurrent_requests - self.semaphore.available_permits(),
+            active_connections: self.config.max_concurrent_requests
+                - self.semaphore.available_permits(),
         }
     }
 }
@@ -148,7 +151,7 @@ pub struct WebScraper {
 impl WebScraper {
     pub fn new(config: ScrapingConfig) -> Self {
         let client = RateLimitedClient::new(config.clone());
-        
+
         Self {
             client,
             config,
@@ -159,18 +162,23 @@ impl WebScraper {
     /// 単一URLのスクレイピング（リトライ機能付き）
     pub async fn scrape_url(&self, url: &str) -> Result<ScrapingResult, String> {
         let mut last_error = String::new();
-        
+
         for attempt in 1..=self.config.max_retries {
             let start_time = Instant::now();
-            
+
             match timeout(
                 self.config.request_timeout,
-                self.client.get_with_rate_limit(url)
-            ).await {
+                self.client.get_with_rate_limit(url),
+            )
+            .await
+            {
                 Ok(Ok(response)) => {
                     let response_time = start_time.elapsed();
-                    
-                    match self.parse_response(url.to_string(), response, response_time).await {
+
+                    match self
+                        .parse_response(url.to_string(), response, response_time)
+                        .await
+                    {
                         Ok(result) => {
                             // 成功した結果を保存
                             self.results.lock().unwrap().push(result.clone());
@@ -188,16 +196,18 @@ impl WebScraper {
                     last_error = "Request timeout".to_string();
                 }
             }
-            
+
             if attempt < self.config.max_retries {
-                println!("  リトライ {}/{} for {}: {}", 
-                         attempt, self.config.max_retries, url, last_error);
-                
+                println!(
+                    "  リトライ {}/{} for {}: {}",
+                    attempt, self.config.max_retries, url, last_error
+                );
+
                 let delay = self.config.retry_delay * attempt as u32;
                 sleep(delay).await;
             }
         }
-        
+
         Err(format!("最大リトライ回数に達しました: {}", last_error))
     }
 
@@ -209,13 +219,13 @@ impl WebScraper {
     ) -> Result<ScrapingResult, String> {
         let status_code = response.status().as_u16();
         let text = response.text().await.map_err(|e| e.to_string())?;
-        
+
         // HTMLの基本的な解析（実際のプロジェクトではscraper crateなどを使用）
         let title = extract_title(&text);
         let description = extract_description(&text);
         let word_count = text.split_whitespace().count();
         let links = extract_links(&text, &url);
-        
+
         Ok(ScrapingResult {
             url,
             title,
@@ -234,17 +244,21 @@ impl WebScraper {
             .map(|url| async move {
                 println!("  スクレイピング開始: {}", url);
                 let result = self.scrape_url(&url).await;
-                
+
                 match &result {
                     Ok(data) => {
-                        println!("  ✓ 完了: {} ({}ms, {} words)", 
-                                 url, data.response_time.as_millis(), data.word_count);
+                        println!(
+                            "  ✓ 完了: {} ({}ms, {} words)",
+                            url,
+                            data.response_time.as_millis(),
+                            data.word_count
+                        );
                     }
                     Err(e) => {
                         println!("  ✗ 失敗: {} - {}", url, e);
                     }
                 }
-                
+
                 result
             })
             .buffer_unordered(self.config.max_concurrent_requests);
@@ -261,21 +275,23 @@ impl WebScraper {
     pub async fn get_stats(&self) -> ScrapingStats {
         let results = self.get_results();
         let request_stats = self.client.get_request_stats().await;
-        
+
         let total_scraped = results.len();
         let successful = results.iter().filter(|r| r.status_code == 200).count();
         let failed = total_scraped - successful;
-        
+
         let avg_response_time = if !results.is_empty() {
-            results.iter()
+            results
+                .iter()
                 .map(|r| r.response_time.as_millis() as f64)
-                .sum::<f64>() / results.len() as f64
+                .sum::<f64>()
+                / results.len() as f64
         } else {
             0.0
         };
-        
+
         let total_words = results.iter().map(|r| r.word_count).sum();
-        
+
         ScrapingStats {
             total_urls_scraped: total_scraped,
             successful_requests: successful,
@@ -331,7 +347,7 @@ fn extract_links(html: &str, base_url: &str) -> Vec<String> {
         Ok(url) => url,
         Err(_) => return links,
     };
-    
+
     // href属性を含む行を検索
     for line in html.lines() {
         if line.contains("href=") {
@@ -341,7 +357,7 @@ fn extract_links(html: &str, base_url: &str) -> Vec<String> {
                 let abs_start = start + href_pos + 6;
                 if let Some(href_end) = line[abs_start..].find('"') {
                     let link = &line[abs_start..abs_start + href_end];
-                    
+
                     // 相対URLを絶対URLに変換
                     if let Ok(absolute_url) = base.join(link) {
                         let url_str = absolute_url.to_string();
@@ -349,7 +365,7 @@ fn extract_links(html: &str, base_url: &str) -> Vec<String> {
                             links.push(url_str);
                         }
                     }
-                    
+
                     start = abs_start + href_end;
                 } else {
                     break;
@@ -357,7 +373,7 @@ fn extract_links(html: &str, base_url: &str) -> Vec<String> {
             }
         }
     }
-    
+
     links
 }
 
@@ -376,56 +392,63 @@ impl BatchScraper {
     /// サイトマップからURLを生成してスクレイピング
     pub async fn scrape_sitemap(&self, base_urls: Vec<String>) -> Vec<ScrapingResult> {
         println!("バッチスクレイピングを開始...");
-        
+
         let mut all_urls = base_urls.clone();
         let mut discovered_urls = Vec::new();
-        
+
         // 最初のページセットをスクレイピング
         let initial_results = self.scraper.scrape_urls(base_urls).await;
-        
+
         // 成功した結果からリンクを収集
         for page_result in initial_results.into_iter().flatten() {
             discovered_urls.extend(page_result.links.clone());
         }
-        
+
         // 重複を除去し、新しいURLのみを抽出
         discovered_urls.sort();
         discovered_urls.dedup();
         discovered_urls.retain(|url| !all_urls.contains(url));
-        
+
         // 発見されたURLの一部をスクレイピング（最大20個）
         if !discovered_urls.is_empty() {
-            let additional_urls: Vec<String> = discovered_urls
-                .into_iter()
-                .take(20)
-                .collect();
-            
-            println!("発見されたリンクをスクレイピング中... ({} URLs)", additional_urls.len());
+            let additional_urls: Vec<String> = discovered_urls.into_iter().take(20).collect();
+
+            println!(
+                "発見されたリンクをスクレイピング中... ({} URLs)",
+                additional_urls.len()
+            );
             all_urls.extend(additional_urls.clone());
-            
+
             let _ = self.scraper.scrape_urls(additional_urls).await;
         }
-        
+
         self.scraper.get_results()
     }
 
     /// 結果をJSON形式で保存
-    pub async fn save_results_json(&self, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn save_results_json(
+        &self,
+        filename: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let results = self.scraper.get_results();
         let json = serde_json::to_string_pretty(&results)?;
-        
+
         tokio::fs::write(filename, json).await?;
         println!("結果を {} に保存しました", filename);
-        
+
         Ok(())
     }
 
     /// CSVレポートの生成
-    pub async fn generate_csv_report(&self, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn generate_csv_report(
+        &self,
+        filename: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let results = self.scraper.get_results();
-        
-        let mut csv_content = String::from("URL,Title,Status,Response Time (ms),Word Count,Links Count\n");
-        
+
+        let mut csv_content =
+            String::from("URL,Title,Status,Response Time (ms),Word Count,Links Count\n");
+
         for result in results {
             let title = result.title.as_deref().unwrap_or("N/A").replace(',', ";");
             csv_content.push_str(&format!(
@@ -438,10 +461,10 @@ impl BatchScraper {
                 result.links.len()
             ));
         }
-        
+
         tokio::fs::write(filename, csv_content).await?;
         println!("CSVレポートを {} に保存しました", filename);
-        
+
         Ok(())
     }
 }
@@ -494,15 +517,18 @@ async fn demo_basic_scraping(
     urls: Vec<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let scraper = WebScraper::new(config.clone());
-    
+
     println!("  {} URLのスクレイピングを開始...", urls.len());
     let start_time = Instant::now();
-    
+
     let _results = scraper.scrape_urls(urls).await;
     let elapsed = start_time.elapsed();
-    
-    println!("  スクレイピング完了 (経過時間: {:.2}秒)", elapsed.as_secs_f64());
-    
+
+    println!(
+        "  スクレイピング完了 (経過時間: {:.2}秒)",
+        elapsed.as_secs_f64()
+    );
+
     // 結果の統計
     let stats = scraper.get_stats().await;
     println!("  統計:");
@@ -510,7 +536,7 @@ async fn demo_basic_scraping(
     println!("    失敗: {}", stats.failed_requests);
     println!("    平均応答時間: {:.0}ms", stats.average_response_time_ms);
     println!("    抽出単語数: {}", stats.total_words_extracted);
-    
+
     Ok(())
 }
 
@@ -519,48 +545,62 @@ async fn demo_batch_scraping(
     urls: Vec<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let batch_scraper = BatchScraper::new(config.clone());
-    
+
     println!("  バッチスクレイピングを開始...");
     let results = batch_scraper.scrape_sitemap(urls).await;
-    
+
     println!("  バッチスクレイピング完了: {} ページ処理", results.len());
-    
+
     // 結果をファイルに保存
     if !results.is_empty() {
-        batch_scraper.save_results_json("scraping_results.json").await?;
-        batch_scraper.generate_csv_report("scraping_report.csv").await?;
+        batch_scraper
+            .save_results_json("scraping_results.json")
+            .await?;
+        batch_scraper
+            .generate_csv_report("scraping_report.csv")
+            .await?;
     }
-    
+
     Ok(())
 }
 
 async fn demo_rate_limiting(config: &ScrapingConfig) -> Result<(), Box<dyn std::error::Error>> {
     let client = RateLimitedClient::new(config.clone());
-    
+
     println!("  レート制限テスト（5回連続リクエスト）");
-    
+
     for i in 1..=5 {
         let start = Instant::now();
         let result = client.get_with_rate_limit("https://httpbin.org/get").await;
         let elapsed = start.elapsed();
-        
+
         match result {
             Ok(response) => {
-                println!("    リクエスト {}: {} ({}ms)", 
-                         i, response.status(), elapsed.as_millis());
+                println!(
+                    "    リクエスト {}: {} ({}ms)",
+                    i,
+                    response.status(),
+                    elapsed.as_millis()
+                );
             }
             Err(e) => {
-                println!("    リクエスト {}: エラー - {} ({}ms)", 
-                         i, e, elapsed.as_millis());
+                println!(
+                    "    リクエスト {}: エラー - {} ({}ms)",
+                    i,
+                    e,
+                    elapsed.as_millis()
+                );
             }
         }
-        
+
         // 統計情報を表示
         let stats = client.get_request_stats().await;
-        println!("      統計: アクティブ接続={}, 分間リクエスト={}",
-                 stats.active_connections, stats.requests_last_minute);
+        println!(
+            "      統計: アクティブ接続={}, 分間リクエスト={}",
+            stats.active_connections, stats.requests_last_minute
+        );
     }
-    
+
     Ok(())
 }
 
@@ -582,13 +622,13 @@ mod tests {
                 </body>
             </html>
         "#;
-        
+
         let title = extract_title(html);
         assert_eq!(title, Some("Test Page".to_string()));
-        
+
         let description = extract_description(html);
         assert_eq!(description, Some("This is a test page".to_string()));
-        
+
         let links = extract_links(html, "https://example.com/");
         assert!(links.contains(&"https://example.com/page1".to_string()));
         assert!(links.contains(&"https://example.com/page2".to_string()));
@@ -601,9 +641,9 @@ mod tests {
             delay_between_requests: Duration::from_millis(100),
             ..Default::default()
         };
-        
+
         let client = RateLimitedClient::new(config);
-        
+
         // 統計情報の初期状態をテスト
         let stats = client.get_request_stats().await;
         assert_eq!(stats.total_requests, 0);

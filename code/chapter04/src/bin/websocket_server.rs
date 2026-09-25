@@ -1,13 +1,13 @@
 // src/bin/websocket_server.rs
 
-use tokio::net::{TcpListener, TcpStream};
-use tokio_tungstenite::{accept_async, tungstenite::Message};
 use futures::{SinkExt, StreamExt};
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{mpsc, RwLock, Notify};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::{mpsc, Notify, RwLock};
+use tokio_tungstenite::{accept_async, tungstenite::Message};
 
 // クライアント情報
 #[derive(Debug, Clone)]
@@ -45,27 +45,27 @@ struct ClientHandle {
 impl WebSocketServer {
     pub fn new() -> (Self, mpsc::UnboundedReceiver<ServerMessage>) {
         let (broadcast_tx, broadcast_rx) = mpsc::unbounded_channel();
-        
+
         let server = WebSocketServer {
             clients: Arc::new(RwLock::new(HashMap::new())),
             next_client_id: Arc::new(RwLock::new(1)),
             broadcast_sender: broadcast_tx,
             shutdown_notify: Arc::new(Notify::new()),
         };
-        
+
         (server, broadcast_rx)
     }
-    
+
     // サーバー開始
     pub async fn start(&self, addr: &str) -> Result<(), Box<dyn std::error::Error>> {
         let listener = TcpListener::bind(addr).await?;
         println!("WebSocket server listening on: {}", addr);
-        
+
         let clients = Arc::clone(&self.clients);
         let next_client_id = Arc::clone(&self.next_client_id);
         let broadcast_sender = self.broadcast_sender.clone();
         let shutdown_notify = Arc::clone(&self.shutdown_notify);
-        
+
         loop {
             tokio::select! {
                 accept_result = listener.accept() => {
@@ -77,13 +77,13 @@ impl WebSocketServer {
                                 *id += 1;
                                 current_id
                             };
-                            
+
                             println!("New client connection: {} (ID: {})", addr, client_id);
-                            
+
                             let clients = Arc::clone(&clients);
                             let broadcast_sender = broadcast_sender.clone();
                             let shutdown_notify = Arc::clone(&shutdown_notify);
-                            
+
                             tokio::spawn(async move {
                                 if let Err(e) = Self::handle_client(
                                     stream,
@@ -108,13 +108,13 @@ impl WebSocketServer {
                 }
             }
         }
-        
+
         // 全クライアントを切断
         self.disconnect_all_clients().await;
-        
+
         Ok(())
     }
-    
+
     // クライアントハンドリング
     async fn handle_client(
         stream: TcpStream,
@@ -126,27 +126,30 @@ impl WebSocketServer {
     ) -> Result<(), Box<dyn std::error::Error>> {
         let ws_stream = accept_async(stream).await?;
         let (mut ws_sender, mut ws_receiver) = ws_stream.split();
-        
+
         let (client_tx, mut client_rx) = mpsc::unbounded_channel();
-        
+
         let client_info = ClientInfo {
             id: client_id,
             addr,
             connected_at: std::time::Instant::now(),
         };
-        
+
         // クライアントを登録
         {
             let mut clients_map = clients.write().await;
-            clients_map.insert(client_id, ClientHandle {
-                info: client_info.clone(),
-                sender: client_tx,
-            });
+            clients_map.insert(
+                client_id,
+                ClientHandle {
+                    info: client_info.clone(),
+                    sender: client_tx,
+                },
+            );
         }
-        
+
         // 接続通知をブロードキャスト
         let _ = broadcast_sender.send(ServerMessage::ClientConnected(client_info.clone()));
-        
+
         // メッセージ送信タスク
         let send_task = {
             let shutdown_notify = Arc::clone(&shutdown_notify);
@@ -171,12 +174,12 @@ impl WebSocketServer {
                 }
             })
         };
-        
+
         // メッセージ受信タスク
         let receive_task = {
             let broadcast_sender = broadcast_sender.clone();
             let shutdown_notify = Arc::clone(&shutdown_notify);
-            
+
             tokio::spawn(async move {
                 loop {
                     tokio::select! {
@@ -209,26 +212,26 @@ impl WebSocketServer {
                 }
             })
         };
-        
+
         // いずれかのタスクが終了するまで待機
         tokio::select! {
             _ = send_task => {},
             _ = receive_task => {},
         }
-        
+
         // クライアントを削除
         {
             let mut clients_map = clients.write().await;
             clients_map.remove(&client_id);
         }
-        
+
         // 切断通知をブロードキャスト
         let _ = broadcast_sender.send(ServerMessage::ClientDisconnected(client_id));
-        
+
         println!("Client {} cleanup completed", client_id);
         Ok(())
     }
-    
+
     // クライアントメッセージの処理
     async fn handle_client_message(
         client_id: ClientId,
@@ -238,7 +241,7 @@ impl WebSocketServer {
         match message {
             Message::Text(text) => {
                 println!("Message from client {}: {}", client_id, text);
-                
+
                 // メッセージをブロードキャスト
                 let broadcast_msg = format!("Client {}: {}", client_id, text);
                 let _ = broadcast_sender.send(ServerMessage::Broadcast(broadcast_msg));
@@ -254,52 +257,54 @@ impl WebSocketServer {
                 // 他のメッセージタイプは無視
             }
         }
-        
+
         Ok(())
     }
-    
+
     // メッセージをブロードキャスト
     pub async fn broadcast_message(&self, content: String) {
         let clients = self.clients.read().await;
         let message = Message::Text(content);
-        
+
         for (id, client) in clients.iter() {
             if client.sender.send(message.clone()).is_err() {
                 println!("Failed to send broadcast to client {}", id);
             }
         }
     }
-    
+
     // 特定クライアントにメッセージ送信
     pub async fn send_to_client(&self, client_id: ClientId, content: String) -> Result<(), String> {
         let clients = self.clients.read().await;
-        
+
         if let Some(client) = clients.get(&client_id) {
             let message = Message::Text(content);
-            client.sender.send(message)
+            client
+                .sender
+                .send(message)
                 .map_err(|_| format!("Failed to send message to client {}", client_id))?;
             Ok(())
         } else {
             Err(format!("Client {} not found", client_id))
         }
     }
-    
+
     // 接続中のクライアント一覧
     pub async fn get_clients(&self) -> Vec<ClientInfo> {
         let clients = self.clients.read().await;
         clients.values().map(|handle| handle.info.clone()).collect()
     }
-    
+
     // 全クライアント切断
     async fn disconnect_all_clients(&self) {
         let clients = self.clients.read().await;
-        
+
         for (id, client) in clients.iter() {
             let _ = client.sender.send(Message::Close(None));
             println!("Sent close message to client {}", id);
         }
     }
-    
+
     // サーバーシャットダウン
     pub async fn shutdown(&self) {
         self.shutdown_notify.notify_waiters();
@@ -310,7 +315,7 @@ impl WebSocketServer {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (server, mut message_receiver) = WebSocketServer::new();
-    
+
     // メッセージ処理タスク
     let server_for_messages = Arc::new(server);
     let message_handler = {
@@ -328,8 +333,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     ServerMessage::ClientConnected(info) => {
                         println!("Client connected: {:?}", info);
-                        let welcome_msg = format!("Welcome client {}! Server time: {:?}", 
-                            info.id, std::time::SystemTime::now());
+                        let welcome_msg = format!(
+                            "Welcome client {}! Server time: {:?}",
+                            info.id,
+                            std::time::SystemTime::now()
+                        );
                         let _ = server.send_to_client(info.id, welcome_msg).await;
                     }
                     ServerMessage::ClientDisconnected(id) => {
@@ -342,40 +350,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         })
     };
-    
+
     // 定期的なブロードキャストタスク
     let periodic_broadcast = {
         let server = Arc::clone(&server_for_messages);
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(30));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 let clients = server.get_clients().await;
-                let status_msg = format!("Server status: {} clients connected at {:?}", 
-                    clients.len(), std::time::SystemTime::now());
-                
+                let status_msg = format!(
+                    "Server status: {} clients connected at {:?}",
+                    clients.len(),
+                    std::time::SystemTime::now()
+                );
+
                 server.broadcast_message(status_msg).await;
             }
         })
     };
-    
+
     // Ctrl+C ハンドリング
     let shutdown_server = Arc::clone(&server_for_messages);
     tokio::spawn(async move {
-        tokio::signal::ctrl_c().await.expect("Failed to listen for ctrl-c");
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to listen for ctrl-c");
         println!("Ctrl+C received, shutting down server...");
         shutdown_server.shutdown().await;
     });
-    
+
     // サーバー開始
     let result = server_for_messages.start("127.0.0.1:8080").await;
-    
+
     // タスクを停止
     message_handler.abort();
     periodic_broadcast.abort();
-    
+
     result
 }
 #[cfg(test)]
@@ -407,6 +420,9 @@ mod broadcast_tests {
 
         server.broadcast_message("hello".to_string()).await;
 
-        assert_eq!(live_rx.try_recv().unwrap(), Message::Text("hello".to_string()));
+        assert_eq!(
+            live_rx.try_recv().unwrap(),
+            Message::Text("hello".to_string())
+        );
     }
 }

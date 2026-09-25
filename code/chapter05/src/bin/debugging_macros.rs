@@ -1,5 +1,5 @@
 //! マクロのデバッグテクニック
-//! 
+//!
 //! マクロ開発時のデバッグ方法とトラブルシューティングを示します。
 
 // デバッグ用のヘルパーマクロ
@@ -8,7 +8,7 @@ macro_rules! debug_macro {
         {
             #[cfg(debug_assertions)]
             eprintln!("[DEBUG MACRO] Input: {}", stringify!($($tokens)*));
-            
+
             $($tokens)*
         }
     };
@@ -87,16 +87,15 @@ macro_rules! compile_error_demo {
 
 // 型チェックのデバッグ
 macro_rules! type_debug {
-    ($expr:expr) => {
-        {
-            let value = $expr;
-            eprintln!("Type of '{}': {}", 
-                stringify!($expr), 
-                std::any::type_name_of_val(&value)
-            );
-            value
-        }
-    };
+    ($expr:expr) => {{
+        let value = $expr;
+        eprintln!(
+            "Type of '{}': {}",
+            stringify!($expr),
+            std::any::type_name_of_val(&value)
+        );
+        value
+    }};
 }
 
 // マクロ内での条件付きコンパイル
@@ -105,10 +104,10 @@ macro_rules! conditional_debug {
         {
             #[cfg(feature = "macro-debug")]
             eprintln!("Macro debug enabled");
-            
+
             #[cfg(not(feature = "macro-debug"))]
             eprintln!("Macro debug disabled");
-            
+
             $($body)*
         }
     };
@@ -118,7 +117,7 @@ macro_rules! conditional_debug {
 macro_rules! check_recursion_limit {
     (@count ) => { 0 };
     (@count $x:tt $($xs:tt)*) => { 1 + check_recursion_limit!(@count $($xs)*) };
-    
+
     ($($tokens:tt)*) => {
         {
             const DEPTH: usize = check_recursion_limit!(@count $($tokens)*);
@@ -131,14 +130,30 @@ macro_rules! check_recursion_limit {
 
 // フラグメント指定子の確認
 macro_rules! fragment_types {
-    ($e:expr) => { eprintln!("Expression: {}", stringify!($e)); };
-    ($i:ident) => { eprintln!("Identifier: {}", stringify!($i)); };
-    ($t:ty) => { eprintln!("Type: {}", stringify!($t)); };
-    ($p:pat) => { eprintln!("Pattern: {}", stringify!($p)); };
-    ($s:stmt) => { eprintln!("Statement: {}", stringify!($s)); };
-    ($b:block) => { eprintln!("Block: {}", stringify!($b)); };
-    ($m:meta) => { eprintln!("Meta: {}", stringify!($m)); };
-    ($tt:tt) => { eprintln!("Token tree: {}", stringify!($tt)); };
+    ($e:expr) => {
+        eprintln!("Expression: {}", stringify!($e));
+    };
+    ($i:ident) => {
+        eprintln!("Identifier: {}", stringify!($i));
+    };
+    ($t:ty) => {
+        eprintln!("Type: {}", stringify!($t));
+    };
+    ($p:pat) => {
+        eprintln!("Pattern: {}", stringify!($p));
+    };
+    ($s:stmt) => {
+        eprintln!("Statement: {}", stringify!($s));
+    };
+    ($b:block) => {
+        eprintln!("Block: {}", stringify!($b));
+    };
+    ($m:meta) => {
+        eprintln!("Meta: {}", stringify!($m));
+    };
+    ($tt:tt) => {
+        eprintln!("Token tree: {}", stringify!($tt));
+    };
 }
 
 // マクロ展開の可視化
@@ -147,18 +162,16 @@ macro_rules! visualize_expansion {
         input: $input:expr,
         process: $process:ident,
         output: $output:ident
-    ) => {
-        {
-            eprintln!("┌─ Macro Expansion ─┐");
-            eprintln!("│ Input:  {:?}      │", $input);
-            eprintln!("│ Process: {}       │", stringify!($process));
-            eprintln!("│ Output: {}        │", stringify!($output));
-            eprintln!("└───────────────────┘");
-            
-            let $output = $process($input);
-            $output
-        }
-    };
+    ) => {{
+        eprintln!("┌─ Macro Expansion ─┐");
+        eprintln!("│ Input:  {:?}      │", $input);
+        eprintln!("│ Process: {}       │", stringify!($process));
+        eprintln!("│ Output: {}        │", stringify!($output));
+        eprintln!("└───────────────────┘");
+
+        let $output = $process($input);
+        $output
+    }};
 }
 
 // エラー境界のテスト
@@ -170,9 +183,7 @@ macro_rules! test_error_handling {
         }
     };
     (panic: $expr:expr) => {
-        std::panic::catch_unwind(|| {
-            $expr
-        }).unwrap_or_else(|_| eprintln!("Panic caught!"));
+        std::panic::catch_unwind(|| $expr).unwrap_or_else(|_| eprintln!("Panic caught!"));
     };
 }
 
@@ -248,7 +259,7 @@ fn main() {
     println!("3. stringify! を使用してトークンを文字列化");
     println!("4. 段階的な開発とテスト");
     println!("5. compile_error! で明確なエラーメッセージ");
-    
+
     // trace_macros! は nightly 専用のため stable では使えない。
     // 展開結果は `cargo +nightly rustc --bin debugging_macros -- -Z trace-macros` や cargo-expand で確かめる
 

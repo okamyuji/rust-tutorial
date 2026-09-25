@@ -1,5 +1,5 @@
 //! 再帰的マクロの実装
-//! 
+//!
 //! マクロの再帰的な呼び出しを使った高度なテクニックを示します。
 
 // リストの長さを計算する再帰マクロ
@@ -192,12 +192,7 @@ fn main() {
 
     // パイプライン処理
     println!("\n--- パイプライン処理 ---");
-    let result = pipeline!(
-        5,
-        |x| x * 2,
-        |x| x + 3,
-        |x: i32| x.to_string()
-    );
+    let result = pipeline!(5, |x| x * 2, |x| x + 3, |x: i32| x.to_string());
     println!("パイプライン結果: {}", result);
 
     // 条件付き繰り返し
@@ -235,7 +230,7 @@ fn main() {
     let value = 3;
     let result = match_all!(value, {
         1 => "one",
-        2 => "two", 
+        2 => "two",
         3 => "three",
         4 => "four"
     });
@@ -268,18 +263,24 @@ mod tests {
     fn tree_builds_nested_children_in_order() {
         let tree = tree!(node: 1, [leaf: 2, node: 3, [leaf: 4], leaf: 5]);
 
-        let TreeNode::Node { value, children } = tree else { panic!("node expected") };
+        let TreeNode::Node { value, children } = tree else {
+            panic!("node expected")
+        };
         assert_eq!(value, 1);
         assert_eq!(children.len(), 3);
         assert!(matches!(children[0], TreeNode::Leaf(2)));
-        assert!(matches!(&children[1], TreeNode::Node { value: 3, children } if matches!(children.as_slice(), [TreeNode::Leaf(4)])));
+        assert!(
+            matches!(&children[1], TreeNode::Node { value: 3, children } if matches!(children.as_slice(), [TreeNode::Leaf(4)]))
+        );
         assert!(matches!(children[2], TreeNode::Leaf(5)));
     }
 
     #[test]
     fn tree_supports_leaf_only_and_empty_children() {
         assert!(matches!(tree!(leaf: 9), TreeNode::Leaf(9)));
-        assert!(matches!(tree!(node: 1, []), TreeNode::Node { value: 1, children } if children.is_empty()));
+        assert!(
+            matches!(tree!(node: 1, []), TreeNode::Node { value: 1, children } if children.is_empty())
+        );
     }
 
     #[test]
