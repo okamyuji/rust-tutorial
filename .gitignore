@@ -1,0 +1,5 @@
+target/
+.DS_Store
+code/chapter02/main
+scraping_results.json
+scraping_report.csv

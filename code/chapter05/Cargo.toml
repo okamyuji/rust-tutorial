@@ -1,0 +1,52 @@
+[package]
+name = "chapter05"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# 手続き的マクロのテスト用
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[[bin]]
+name = "declarative_macros"
+path = "src/bin/declarative_macros.rs"
+
+[[bin]]
+name = "macro_patterns"
+path = "src/bin/macro_patterns.rs"
+
+[[bin]]
+name = "recursive_macros"
+path = "src/bin/recursive_macros.rs"
+
+[[bin]]
+name = "const_functions"
+path = "src/bin/const_functions.rs"
+
+[[bin]]
+name = "macro_hygiene"
+path = "src/bin/macro_hygiene.rs"
+
+[[bin]]
+name = "debugging_macros"
+path = "src/bin/debugging_macros.rs"
+
+[[bin]]
+name = "practical_macros"
+path = "src/bin/practical_macros.rs"
+
+[[bin]]
+name = "problem1_custom_assert"
+path = "src/bin/problem1_custom_assert.rs"
+
+[[bin]]
+name = "problem2_builder_macro"
+path = "src/bin/problem2_builder_macro.rs"
+
+[[bin]]
+name = "problem3_type_safe_units"
+path = "src/bin/problem3_type_safe_units.rs"
+
+# 手続き的マクロの例（別クレートとして後で作成）
+# proc_macro_derive と proc_macro_attribute は別プロジェクトで実装

@@ -1,0 +1,30 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  # 章ごとに独立した crate のため、直下の Cargo.toml を前提とする中央の rust-ci.yml は使わず、章単位でテストする
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        chapter: [chapter01, chapter02, chapter03, chapter04, chapter05]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: code/${{ matrix.chapter }}
+      - name: Test
+        run: cargo test --all-targets --manifest-path code/${{ matrix.chapter }}/Cargo.toml
+  security:
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: okamyuji/reusable-workflows/.github/workflows/security-scan.yml@v1
