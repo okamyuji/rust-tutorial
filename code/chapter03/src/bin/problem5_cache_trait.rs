@@ -424,13 +424,11 @@ where
         K: Clone,
         F: FnOnce() -> V,
     {
-        if let Some(value) = self.get_with_expiry(&key) {
-            // getは変更しないが、統計は更新済み
-            return Ok(unsafe { std::mem::transmute(value) });
+        // ヒット判定だけを先に済ませて借用を切り、参照は最後に取り直す
+        if self.get_with_expiry(&key).is_none() {
+            let value = f();
+            self.set(key.clone(), value)?;
         }
-
-        let value = f();
-        self.set(key.clone(), value)?;
         Ok(&self.data.get(&key).unwrap().0)
     }
 }
@@ -452,6 +450,96 @@ where
         self.hits = 0;
         self.misses = 0;
         self.expirations = 0;
+    }
+}
+
+// マルチレベルキャッシュの実装
+struct MultiLevelCache<K, V> {
+    l1_cache: LRUCache<K, V>,  // 高速・小容量
+    l2_cache: FIFOCache<K, V>, // 中速・中容量
+    total_hits: u64,
+    total_misses: u64,
+    l1_hits: u64,
+    l2_hits: u64,
+}
+
+impl<K, V> MultiLevelCache<K, V>
+where
+    K: Clone + Hash + Eq + Debug,
+    V: Clone + Debug,
+{
+    fn new(l1_capacity: usize, l2_capacity: usize) -> Self {
+        MultiLevelCache {
+            l1_cache: LRUCache::new(l1_capacity),
+            l2_cache: FIFOCache::new(l2_capacity),
+            total_hits: 0,
+            total_misses: 0,
+            l1_hits: 0,
+            l2_hits: 0,
+        }
+    }
+
+    fn get_multilevel(&mut self, key: &K) -> Option<V> {
+        // L1キャッシュをチェック
+        if let Some(value) = self.l1_cache.get_with_stats(key) {
+            self.l1_hits += 1;
+            self.total_hits += 1;
+            return Some(value.clone());
+        }
+
+        // L2キャッシュをチェック
+        if self.l2_cache.get_with_stats(key).is_some() {
+            self.l2_hits += 1;
+            self.total_hits += 1;
+
+            // L2からL1にプロモート（値はどちらか一方のレベルにだけ置く）
+            let value = self.l2_cache.remove(key)?;
+            self.insert_into_l1(key.clone(), value.clone());
+            return Some(value);
+        }
+
+        self.total_misses += 1;
+        None
+    }
+
+    fn set_multilevel(&mut self, key: K, value: V) -> Result<(), CacheError> {
+        self.l2_cache.remove(&key);
+        self.insert_into_l1(key, value);
+        Ok(())
+    }
+
+    // L1が満杯なら、最も古い要素をL2へ降格させてから入れる
+    fn insert_into_l1(&mut self, key: K, value: V) {
+        if self.l1_cache.is_full() && !self.l1_cache.contains_key(&key) {
+            if let Some((old_key, old_value)) = self.l1_cache.evict_lru() {
+                let _ = self.l2_cache.set(old_key, old_value);
+            }
+        }
+        let _ = self.l1_cache.set(key, value);
+    }
+
+    fn l1_hit_rate(&self) -> f64 {
+        if self.total_hits + self.total_misses == 0 {
+            0.0
+        } else {
+            self.l1_hits as f64 / (self.total_hits + self.total_misses) as f64
+        }
+    }
+
+    fn l2_hit_rate(&self) -> f64 {
+        if self.total_hits + self.total_misses == 0 {
+            0.0
+        } else {
+            self.l2_hits as f64 / (self.total_hits + self.total_misses) as f64
+        }
+    }
+
+    fn total_hit_rate(&self) -> f64 {
+        if self.total_hits + self.total_misses == 0 {
+            0.0
+        } else {
+            self.total_hits as f64 / (self.total_hits + self.total_misses) as f64
+        }
     }
 }
 
@@ -872,90 +960,6 @@ fn time_based_cache_demo() {
 fn multi_level_cache_demo() {
     println!("\n【マルチレベルキャッシュ】");
 
-    struct MultiLevelCache<K, V> {
-        l1_cache: LRUCache<K, V>,  // 高速・小容量
-        l2_cache: FIFOCache<K, V>, // 中速・中容量
-        total_hits: u64,
-        total_misses: u64,
-        l1_hits: u64,
-        l2_hits: u64,
-    }
-
-    impl<K, V> MultiLevelCache<K, V>
-    where
-        K: Clone + Hash + Eq + Debug,
-        V: Clone + Debug,
-    {
-        fn new(l1_capacity: usize, l2_capacity: usize) -> Self {
-            MultiLevelCache {
-                l1_cache: LRUCache::new(l1_capacity),
-                l2_cache: FIFOCache::new(l2_capacity),
-                total_hits: 0,
-                total_misses: 0,
-                l1_hits: 0,
-                l2_hits: 0,
-            }
-        }
-
-        fn get_multilevel(&mut self, key: &K) -> Option<V> {
-            // L1キャッシュをチェック
-            if let Some(value) = self.l1_cache.get_with_stats(key) {
-                self.l1_hits += 1;
-                self.total_hits += 1;
-                return Some(value.clone());
-            }
-
-            // L2キャッシュをチェック
-            if let Some(value) = self.l2_cache.get_with_stats(key) {
-                self.l2_hits += 1;
-                self.total_hits += 1;
-
-                // L2からL1にプロモート
-                let value_clone = value.clone();
-                let _ = self.l1_cache.set(key.clone(), value_clone.clone());
-                return Some(value_clone);
-            }
-
-            self.total_misses += 1;
-            None
-        }
-
-        fn set_multilevel(&mut self, key: K, value: V) -> Result<(), CacheError> {
-            // L1に設定を試行
-            if let Err(_) = self.l1_cache.set(key.clone(), value.clone()) {
-                // L1が満杯の場合、L2に設定
-                if let Err(_) = self.l2_cache.set(key, value) {
-                    return Err(CacheError::CapacityExceeded);
-                }
-            }
-            Ok(())
-        }
-
-        fn l1_hit_rate(&self) -> f64 {
-            if self.total_hits + self.total_misses == 0 {
-                0.0
-            } else {
-                self.l1_hits as f64 / (self.total_hits + self.total_misses) as f64
-            }
-        }
-
-        fn l2_hit_rate(&self) -> f64 {
-            if self.total_hits + self.total_misses == 0 {
-                0.0
-            } else {
-                self.l2_hits as f64 / (self.total_hits + self.total_misses) as f64
-            }
-        }
-
-        fn total_hit_rate(&self) -> f64 {
-            if self.total_hits + self.total_misses == 0 {
-                0.0
-            } else {
-                self.total_hits as f64 / (self.total_hits + self.total_misses) as f64
-            }
-        }
-    }
-
     // マルチレベルキャッシュのテスト
     let mut multi_cache = MultiLevelCache::new(2, 4);
 
@@ -1248,6 +1252,119 @@ mod tests {
             (cache.hit_count(), cache.miss_count(), cache.expiration_count()),
             (0, 0, 0)
         );
+    }
+
+    #[test]
+    fn multilevel_demotes_l1_lru_entry_to_l2_when_l1_is_full() {
+        let mut cache = MultiLevelCache::new(2, 4);
+        for (k, v) in [("a", 1), ("b", 2), ("c", 3)] {
+            cache.set_multilevel(s(k), v).unwrap();
+        }
+
+        assert_eq!(cache.l1_cache.len(), 2);
+        assert_eq!(cache.l2_cache.len(), 1);
+        assert_eq!(cache.l2_cache.get(&s("a")), Some(&1));
+        assert_eq!(cache.l1_cache.get(&s("a")), None);
+    }
+
+    #[test]
+    fn multilevel_promotes_l2_hit_to_l1_and_demotes_l1_lru() {
+        let mut cache = MultiLevelCache::new(2, 4);
+        for (k, v) in [("a", 1), ("b", 2), ("c", 3)] {
+            cache.set_multilevel(s(k), v).unwrap();
+        }
+
+        assert_eq!(cache.get_multilevel(&s("a")), Some(1));
+
+        assert_eq!(cache.l1_cache.get(&s("a")), Some(&1));
+        assert_eq!(cache.l2_cache.get(&s("a")), None);
+        assert_eq!(cache.l2_cache.get(&s("b")), Some(&2));
+        assert_eq!((cache.l1_cache.len(), cache.l2_cache.len()), (2, 1));
+    }
+
+    #[test]
+    fn multilevel_updates_existing_l1_key_without_demotion() {
+        let mut cache = MultiLevelCache::new(2, 4);
+        cache.set_multilevel(s("a"), 1).unwrap();
+        cache.set_multilevel(s("b"), 2).unwrap();
+
+        cache.set_multilevel(s("a"), 10).unwrap();
+
+        assert_eq!(cache.l1_cache.get(&s("a")), Some(&10));
+        assert_eq!(cache.l2_cache.len(), 0);
+    }
+
+    #[test]
+    fn multilevel_counts_hits_per_level_and_misses() {
+        let mut cache: MultiLevelCache<String, i32> = MultiLevelCache::new(1, 2);
+        assert_eq!(
+            (cache.l1_hit_rate(), cache.l2_hit_rate(), cache.total_hit_rate()),
+            (0.0, 0.0, 0.0)
+        );
+        cache.set_multilevel(s("a"), 1).unwrap();
+        cache.set_multilevel(s("b"), 2).unwrap();
+
+        assert_eq!(cache.get_multilevel(&s("b")), Some(2));
+        assert_eq!(cache.get_multilevel(&s("a")), Some(1));
+        assert_eq!(cache.get_multilevel(&s("zz")), None);
+
+        assert_eq!((cache.l1_hits, cache.l2_hits, cache.total_misses), (1, 1, 1));
+        assert_eq!(cache.total_hits, 2);
+        assert_eq!(cache.l1_hit_rate(), 1.0 / 3.0);
+        assert_eq!(cache.l2_hit_rate(), 1.0 / 3.0);
+        assert_eq!(cache.total_hit_rate(), 2.0 / 3.0);
+    }
+
+    // 分母 hits + misses の境界: ミス0件と、ヒット数とミス数が等しい場合
+    fn multilevel_with_l1_a_and_l2_b() -> MultiLevelCache<String, i32> {
+        let mut cache = MultiLevelCache::new(1, 2);
+        cache.set_multilevel(s("b"), 2).unwrap();
+        cache.set_multilevel(s("a"), 1).unwrap();
+        cache
+    }
+
+    #[test]
+    fn multilevel_hit_rates_with_only_hits() {
+        let mut l1_only = multilevel_with_l1_a_and_l2_b();
+        l1_only.get_multilevel(&s("a"));
+        assert_eq!((l1_only.l1_hit_rate(), l1_only.total_hit_rate()), (1.0, 1.0));
+
+        let mut l2_only = multilevel_with_l1_a_and_l2_b();
+        l2_only.get_multilevel(&s("b"));
+        assert_eq!(l2_only.l2_hit_rate(), 1.0);
+    }
+
+    #[test]
+    fn multilevel_hit_rates_with_equal_hits_and_misses() {
+        let mut l1_half = multilevel_with_l1_a_and_l2_b();
+        l1_half.get_multilevel(&s("a"));
+        l1_half.get_multilevel(&s("zz"));
+        assert_eq!((l1_half.l1_hit_rate(), l1_half.total_hit_rate()), (0.5, 0.5));
+
+        let mut l2_half = multilevel_with_l1_a_and_l2_b();
+        l2_half.get_multilevel(&s("b"));
+        l2_half.get_multilevel(&s("zz"));
+        assert_eq!(l2_half.l2_hit_rate(), 0.5);
+    }
+
+    #[test]
+    fn timed_get_or_insert_with_counts_hit_for_fresh_entry_and_inserts_on_miss() {
+        let mut cache = timed_with_entry(Duration::ZERO, TTL);
+
+        assert_eq!(cache.get_or_insert_with(s("k"), || 99), Ok(&1));
+        assert_eq!(cache.hit_count(), 1);
+
+        assert_eq!(cache.get_or_insert_with(s("new"), || 7), Ok(&7));
+        assert_eq!(cache.miss_count(), 1);
+        assert_eq!(cache.get(&s("new")), Some(&7));
+    }
+
+    #[test]
+    fn timed_get_or_insert_with_replaces_expired_entry() {
+        let mut cache = timed_with_entry(OLD, TTL);
+
+        assert_eq!(cache.get_or_insert_with(s("k"), || 5), Ok(&5));
+        assert_eq!(cache.expiration_count(), 1);
     }
 
     #[test]
