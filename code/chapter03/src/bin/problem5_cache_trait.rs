@@ -1404,6 +1404,22 @@ mod tests {
         assert_eq!(cache.expiration_count(), 1);
     }
 
+    // 容量 0 でも get_or_insert_with は panic しない（LRU/FIFO は挿入、TimedCache は容量超過エラー）
+    #[test]
+    fn get_or_insert_with_on_zero_capacity_does_not_panic() {
+        let mut lru = LRUCache::new(0);
+        assert_eq!(lru.get_or_insert_with(s("a"), || 1), Ok(&1));
+
+        let mut fifo = FIFOCache::new(0);
+        assert_eq!(fifo.get_or_insert_with(s("a"), || 1), Ok(&1));
+
+        let mut timed: TimedCache<String, i32> = TimedCache::new(0, TTL);
+        assert_eq!(
+            timed.get_or_insert_with(s("a"), || 1),
+            Err(CacheError::CapacityExceeded)
+        );
+    }
+
     #[test]
     fn cache_stats_hit_rate_handles_zero_and_mixed() {
         let mut lru: LRUCache<String, i32> = LRUCache::new(1);

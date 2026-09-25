@@ -6,8 +6,8 @@ on:
 permissions:
   contents: read
 jobs:
-  # 章ごとに独立した crate のため、直下の Cargo.toml を前提とする中央の rust-ci.yml は使わず、章単位でテストする
-  test:
+  # 章ごとに独立した crate のため、直下の Cargo.toml を前提とする中央の rust-ci.yml は使わず、章単位で検査する
+  check:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -18,11 +18,17 @@ jobs:
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: code/${{ matrix.chapter }}
+      - name: Format
+        run: cargo fmt --all --check --manifest-path code/${{ matrix.chapter }}/Cargo.toml
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features --locked --manifest-path code/${{ matrix.chapter }}/Cargo.toml -- -D warnings
       - name: Test
-        run: cargo test --all-targets --manifest-path code/${{ matrix.chapter }}/Cargo.toml
+        run: cargo test --all-targets --locked --manifest-path code/${{ matrix.chapter }}/Cargo.toml
   security:
     permissions:
       contents: read
