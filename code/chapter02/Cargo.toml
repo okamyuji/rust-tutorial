@@ -4,3 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+
+# サンプルは説明用に型やAPIを並べるため、未使用の定義は警告しない
+[lints.rust]
+dead_code = "allow"
+
+# ライフタイムの章なので、省略できる注釈もあえて明示する
+[lints.clippy]
+needless_lifetimes = "allow"
+type_complexity = "allow"

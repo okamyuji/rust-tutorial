@@ -3,7 +3,6 @@
 use std::time::Duration;
 use tokio::time::sleep;
 use std::sync::Arc;
-use std::marker::PhantomData;
 
 #[tokio::main]
 async fn main() {
@@ -166,7 +165,8 @@ async fn lifetime_elision_in_async() {
     }
     */
     
-    // 明示的なライフタイムが必要
+    // 省略規則でも推論できるが、比較のためにライフタイムを明示して書く
+    #[allow(clippy::needless_lifetimes)]
     async fn async_first_explicit<'a>(s: &'a str) -> &'a str {
         // ただし、.awaitを使わない場合のみ
         s.split_whitespace().next().unwrap_or("")
@@ -322,5 +322,13 @@ mod tests {
         tokio::time::timeout(Duration::from_secs(30), super::workarounds_and_patterns())
             .await
             .expect("workarounds_and_patterns がハングした");
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

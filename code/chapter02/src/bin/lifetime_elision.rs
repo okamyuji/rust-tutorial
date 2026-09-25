@@ -37,7 +37,7 @@ fn first_word(s: &str) -> &str {
         }
     }
 
-    &s[..]
+    s
 }
 
 // 規則1が適用：各入力に別々のライフタイムが割り当てられる
@@ -281,5 +281,25 @@ mod tests {
         assert_eq!(part("あいうえお"), "あいうえお");
         assert_eq!(part("abcd"), "abcd");
         assert_eq!(part(""), "");
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}
+
+#[cfg(test)]
+mod first_word_tests {
+    use super::first_word;
+
+    #[test]
+    fn first_word_stops_at_first_space_or_returns_whole_text() {
+        assert_eq!(first_word("hello world"), "hello");
+        assert_eq!(first_word("single"), "single");
+        assert_eq!(first_word(" lead"), "");
     }
 }

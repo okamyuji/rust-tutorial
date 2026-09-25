@@ -54,7 +54,7 @@ fn demonstrate_struct_covariance() {
 
     // 共変な構造体
     let static_data = CovariantStruct {
-        data: &"static data",
+        data: "static data",
     };
 
     // より短いライフタイムの変数に代入可能
@@ -378,5 +378,13 @@ impl<T> InvariantType<T> {
         InvariantType {
             _marker: PhantomData,
         }
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

@@ -82,7 +82,7 @@ macro_rules! assert_in_range {
     };
     
     ($value:expr, $min:expr, $max:expr, $($msg:tt)*) => {
-        if $value < $min || $value > $max {
+        if !($min..=$max).contains(&$value) {
             panic!($($msg)*);
         }
     };
@@ -155,7 +155,8 @@ fn main() {
     // 基本的なアサート
     println!("--- 基本的なアサート ---");
     assert_custom!(true);
-    assert_custom!(2 + 2 == 4, "数学が壊れています！");
+    let two = 2;
+    assert_custom!(two + two == 4, "数学が壊れています！");
     println!("✓ 基本的なアサートが成功");
 
     // 比較演算子アサート
@@ -189,9 +190,9 @@ fn main() {
 
     // 近似値アサート
     println!("\n--- 近似値アサート ---");
-    let pi = 3.14159;
-    let approx_pi = 3.14160;
-    assert_approx_eq!(pi, approx_pi, 0.0001);
+    let third = 1.0 / 3.0;
+    let approx_third = 0.3333;
+    assert_approx_eq!(third, approx_third, 0.0001);
     println!("✓ 近似値アサートが成功");
 
     // パニックのテスト
@@ -203,7 +204,7 @@ fn main() {
 
     // コレクションのアサート
     println!("\n--- コレクションアサート ---");
-    let vec = vec![1, 2, 3, 4, 5];
+    let vec = [1, 2, 3, 4, 5];
     assert_contains!(vec, 3);
     println!("✓ コレクションアサートが成功");
 
@@ -223,8 +224,6 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_assert_custom() {
         assert_custom!(true);
@@ -253,7 +252,7 @@ mod tests {
     #[test]
     fn test_assert_approx_eq() {
         // 差 1e-5 と同じ許容誤差だと浮動小数点誤差で上回るため、余裕のある値にする
-        assert_approx_eq!(3.14159, 3.14160, 0.0001);
+        assert_approx_eq!(0.33333, 0.33334, 0.0001);
         assert_approx_eq!(1.0f32, 1.0f32 + 1e-7);
         assert_approx_eq!(2, 2);
     }
@@ -277,7 +276,15 @@ mod tests {
 
     #[test]
     fn test_assert_contains() {
-        let vec = vec!["apple", "banana", "orange"];
+        let vec = ["apple", "banana", "orange"];
         assert_contains!(vec, "banana");
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

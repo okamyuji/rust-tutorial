@@ -104,7 +104,7 @@ fn marker_trait_pattern() {
     println!("標準処理:");
     println!("  {}", process_value(&s));
     println!("  {}", process_value(&v));
-    println!("  {}", process_value(&n));
+    println!("  {}", process_value(n));
     
     println!("\n最適化処理:");
     println!("  {}", process_optimized(s));
@@ -407,5 +407,13 @@ mod tests {
     #[test]
     fn type_state_pattern_runs_without_panicking() {
         super::type_state_pattern();
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

@@ -53,7 +53,7 @@ fn demonstrate_copy_constraints() {
     println!("\n--- Copyトレイトの制約 ---");
     
     // Copyを実装する標準型
-    let primitives = (42i32, 3.14f64, true, 'R');
+    let primitives = (42i32, std::f64::consts::PI, true, 'R');
     let copy = primitives; // すべてCopyなのでタプルもCopy
     println!("元のタプル: {:?}", primitives);
     println!("コピー: {:?}", copy);
@@ -68,4 +68,12 @@ fn demonstrate_copy_constraints() {
     let opt1: Option<i32> = Some(42);
     let opt2 = opt1; // i32はCopyなのでOption<i32>もCopy
     println!("\nOption<i32>もCopy可能: {:?}, {:?}", opt1, opt2);
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

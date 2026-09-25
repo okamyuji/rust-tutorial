@@ -139,7 +139,7 @@ fn generic_vs_associated() {
         }
     }
     
-    let mut int_box = MyBox { value: 42 };
+    let int_box = MyBox { value: 42 };
     println!("ジェネリック Container<i32>: {}", int_box.get());
     
     let mut stack = Stack { items: Vec::new() };
@@ -366,5 +366,13 @@ fn practical_examples() {
         Ok(car) => println!("\n車の構築成功: {} {} ({}年)", 
                            car.make, car.model, car.year),
         Err(e) => println!("車の構築失敗: {}", e),
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

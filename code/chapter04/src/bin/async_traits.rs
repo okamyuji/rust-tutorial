@@ -252,7 +252,7 @@ async fn generic_async_traits() {
     // トレイトオブジェクトとしての使用
     println!("\n  トレイトオブジェクトとして:");
     
-    let container: Box<dyn AsyncContainer<String>> = Box::new(vec);
+    let _container: Box<dyn AsyncContainer<String>> = Box::new(vec);
     // 注: async-traitはSendを自動的に追加しない
 }
 
@@ -332,5 +332,13 @@ mod tests {
     async fn native_async_fn_in_trait_returns_value() {
         use super::AsyncTrait;
         assert_eq!(super::NativeImpl.async_method().await, "ネイティブの async fn in trait");
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

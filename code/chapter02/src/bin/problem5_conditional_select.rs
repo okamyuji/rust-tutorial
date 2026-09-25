@@ -74,15 +74,15 @@ fn basic_string_selection() {
     println!("\n様々な選択基準:");
     println!(
         "アルファベット順で最初: '{}'",
-        select_by_criteria(&rust_string, &python_string, alphabetically_first)
+        select_by_criteria(rust_string, python_string, alphabetically_first)
     );
     println!(
         "Rustを含む: '{}'",
-        select_by_criteria(&rust_string, &python_string, contains_rust)
+        select_by_criteria(rust_string, python_string, contains_rust)
     );
     println!(
         "母音が多い: '{}'",
-        select_by_criteria(&rust_string, &python_string, more_vowels)
+        select_by_criteria(rust_string, python_string, more_vowels)
     );
 }
 
@@ -394,4 +394,12 @@ fn practical_applications() {
     println!("✓ より短いライフタイムを持つ値がスコープを抜けると戻り値も使用不可");
     println!("✓ ライフタイムの制約を回避したい場合は所有権を取る型（String等）を使用");
     println!("✓ 実用的な場面では設定選択、テキスト処理、アルゴリズム選択等で活用");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

@@ -560,7 +560,7 @@ fn extension_trait_pattern() {
 
     impl<I: Iterator> IteratorExt for I {}
 
-    let numbers = vec![1, 2, 3, 4, 5];
+    let numbers = [1, 2, 3, 4, 5];
     let avg = numbers.iter().copied().average::<i32>();
     println!("\n平均値: {:?}", avg);
 
@@ -568,4 +568,12 @@ fn extension_trait_pattern() {
 
     let collected: Result<Vec<i32>, &str> = results.into_iter().collect_results();
     println!("収集結果: {:?}", collected);
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

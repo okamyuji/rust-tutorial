@@ -1,6 +1,11 @@
 // src/bin/problem3_hrtb.rs
 // 復習問題3: HRTB（高階トレイト境界）の解答
 
+// 関数ポインタとの組み合わせ
+fn extract_extension(filename: &str) -> &str {
+    filename.split('.').next_back().unwrap_or("")
+}
+
 fn main() {
     println!("=== 復習問題3: HRTB（高階トレイト境界）===\n");
 
@@ -108,11 +113,6 @@ fn practical_hrtb_examples() {
     println!("\nFirstWord処理:");
     for result in first_word_processor.process_multiple(&inputs) {
         println!("  {}", result);
-    }
-
-    // 関数ポインタとの組み合わせ
-    fn extract_extension(filename: &str) -> &str {
-        filename.split('.').last().unwrap_or("")
     }
 
     let extension_processor = StringProcessor::new("Extension".to_string(), extract_extension);
@@ -254,7 +254,7 @@ fn advanced_hrtb_patterns() {
             .collect()
     }
 
-    let words = vec!["  hello  ", "  world  ", "  rust  "];
+    let words = ["  hello  ", "  world  ", "  rust  "];
     let trimmed = process_iterator(words.iter(), |s| s.trim());
     println!("イテレータ処理: {:?}", trimmed);
 
@@ -327,4 +327,24 @@ fn advanced_hrtb_patterns() {
     println!("・トレイトオブジェクトとの組み合わせで柔軟性が向上");
     println!("・イテレータパターンでも頻繁に使用される");
     println!("・設定バリデーション等の実用的な場面でも活用できる");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}
+
+#[cfg(test)]
+mod extension_tests {
+    use super::extract_extension;
+
+    #[test]
+    fn extract_extension_returns_text_after_last_dot() {
+        assert_eq!(extract_extension("archive.tar.gz"), "gz");
+        assert_eq!(extract_extension("script.rs"), "rs");
+        assert_eq!(extract_extension("README"), "README");
+    }
 }

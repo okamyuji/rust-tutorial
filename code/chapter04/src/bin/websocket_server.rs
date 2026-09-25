@@ -264,7 +264,7 @@ impl WebSocketServer {
         let message = Message::Text(content);
         
         for (id, client) in clients.iter() {
-            if let Err(_) = client.sender.send(message.clone()) {
+            if client.sender.send(message.clone()).is_err() {
                 println!("Failed to send broadcast to client {}", id);
             }
         }
@@ -377,4 +377,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     periodic_broadcast.abort();
     
     result
+}
+#[cfg(test)]
+mod broadcast_tests {
+    use super::*;
+
+    fn handle(id: ClientId, sender: mpsc::UnboundedSender<Message>) -> ClientHandle {
+        ClientHandle {
+            info: ClientInfo {
+                id,
+                addr: "127.0.0.1:1".parse().unwrap(),
+                connected_at: std::time::Instant::now(),
+            },
+            sender,
+        }
+    }
+
+    #[tokio::test]
+    async fn broadcast_reaches_live_clients_and_tolerates_closed_ones() {
+        let (server, _events) = WebSocketServer::new();
+        let (live_tx, mut live_rx) = mpsc::unbounded_channel();
+        let (closed_tx, closed_rx) = mpsc::unbounded_channel();
+        drop(closed_rx);
+        {
+            let mut clients = server.clients.write().await;
+            clients.insert(1, handle(1, live_tx));
+            clients.insert(2, handle(2, closed_tx));
+        }
+
+        server.broadcast_message("hello".to_string()).await;
+
+        assert_eq!(live_rx.try_recv().unwrap(), Message::Text("hello".to_string()));
+    }
 }

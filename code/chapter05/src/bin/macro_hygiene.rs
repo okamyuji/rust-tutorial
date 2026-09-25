@@ -6,7 +6,8 @@
 macro_rules! hygienic_let {
     ($e:expr) => {
         {
-            let x = 42;  // マクロ内のx
+            #[allow(unused_variables)]
+            let x = 42;  // マクロ内のx（呼び出し元の x とは別物なので使われない）
             $e          // 呼び出し元の式を評価
         }
     };
@@ -96,7 +97,7 @@ macro_rules! create_closure {
 // ライフタイムの衛生性
 macro_rules! lifetime_macro {
     ($t:ty) => {
-        fn macro_function<'a>(x: &'a $t) -> &'a $t {
+        fn macro_function(x: &$t) -> &$t {
             x
         }
     };
@@ -144,13 +145,13 @@ fn main() {
 
     // ラベルの衛生性
     println!("\n--- ラベルの衛生性 ---");
-    'outer_loop: loop {
+    'outer_block: {
         loop_with_label!({
             println!("マクロ内のループ");
             // break 'macro_loop;  // エラー：'macro_loopは見えない
         });
-        println!("外側のループ");
-        break 'outer_loop;
+        println!("外側のブロック");
+        break 'outer_block;
     }
 
     // 型の衛生性
@@ -189,7 +190,7 @@ fn main() {
     println!("\n--- ライフタイム ---");
     lifetime_macro!(str);
     let s = "Hello";
-    let result = macro_function(&s);
+    let result = macro_function(s);
     println!("ライフタイム付き関数: {}", result);
 
     // モジュールの生成
@@ -205,4 +206,12 @@ fn main() {
     println!("4. マクロの展開結果を理解するため、cargo expandを活用する");
 
     println!("\nマクロの衛生性を理解しました！");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

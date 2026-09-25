@@ -142,7 +142,7 @@ fn demonstrate_iterator_hrtb() {
     println!("数値の合計: {}", sum);
 
     let concatenated = process_iterator(&strings, |iter| {
-        iter.map(|s| *s).collect::<Vec<_>>().join(", ")
+        iter.copied().collect::<Vec<_>>().join(", ")
     });
     println!("文字列の結合: {}", concatenated);
 }
@@ -290,4 +290,12 @@ fn why_hrtb_is_needed() {
 
     // needs_hrtb関数を使用
     needs_hrtb(|s| s.trim());
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

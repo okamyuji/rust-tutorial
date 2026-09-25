@@ -155,8 +155,8 @@ impl SystemMetricsStream {
 
         SystemMetrics {
             timestamp: now,
-            cpu_usage: (self.cpu_base + cpu_variation).max(0.0).min(100.0),
-            memory_usage: (self.memory_base + memory_variation).max(0.0).min(100.0),
+            cpu_usage: (self.cpu_base + cpu_variation).clamp(0.0, 100.0),
+            memory_usage: (self.memory_base + memory_variation).clamp(0.0, 100.0),
             disk_io: ((elapsed * 1000.0) as u64) % 10000,
         }
     }
@@ -368,7 +368,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_async_number_generator() {
-        let mut gen = AsyncNumberGenerator::new(3, Duration::from_millis(10));
+        let gen = AsyncNumberGenerator::new(3, Duration::from_millis(10));
         
         let numbers: Vec<usize> = gen.collect().await;
         assert_eq!(numbers, vec![0, 1, 2]);
@@ -391,7 +391,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_backpressure_stream() {
-        let mut stream = BackpressureStream::new(5, 10, Duration::from_millis(1));
+        let stream = BackpressureStream::new(5, 10, Duration::from_millis(1));
         
         let items: Vec<String> = stream.collect().await;
         assert_eq!(items.len(), 5);
@@ -411,5 +411,31 @@ mod tests {
             .await;
         
         assert_eq!(even_numbers, vec![0, 2, 4]);
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod metrics_tests {
+    use super::*;
+
+    #[test]
+    fn generate_metrics_adds_sine_variation_to_base_values() {
+        let mut stream = SystemMetricsStream::new(Duration::from_millis(10));
+        // 経過5秒で time_factor=0.5 になり、CPU は +20、メモリは +15·sin(π/4) 変動する
+        stream.last_poll = Some(Instant::now() - Duration::from_secs(5));
+
+        let metrics = stream.generate_metrics();
+
+        assert!((metrics.cpu_usage - 30.0).abs() < 0.01, "{}", metrics.cpu_usage);
+        let expected_memory = 50.0 + 15.0 * (std::f64::consts::PI / 4.0).sin();
+        assert!((metrics.memory_usage - expected_memory).abs() < 0.01, "{}", metrics.memory_usage);
     }
 }

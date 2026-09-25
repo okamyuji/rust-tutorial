@@ -42,7 +42,7 @@ fn static_vs_dynamic_dispatch() {
     process_static(&strings);
 
     // 動的ディスパッチは異なる型を混在可能
-    let mixed: Vec<&dyn Display> = vec![&42, &"hello", &3.14];
+    let mixed: Vec<&dyn Display> = vec![&42, &"hello", &std::f64::consts::PI];
     println!("\n動的ディスパッチ（混在）:");
     process_dynamic(&mixed);
 
@@ -94,7 +94,7 @@ fn monomorphization_demo() {
     // コンパイラは各型に対して専用の関数を生成
     println!("i32版: {}", generic_function(42));
     println!("&str版: {}", generic_function("hello"));
-    println!("f64版: {}", generic_function(3.14));
+    println!("f64版: {}", generic_function(std::f64::consts::PI));
 
     // バイナリサイズへの影響
     fn process_many_types() {
@@ -476,4 +476,12 @@ fn benchmark_example() {
         hash_struct.name(),
         hash_struct.memory_usage()
     );
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

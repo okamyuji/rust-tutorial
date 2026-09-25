@@ -135,7 +135,7 @@ async fn join_patterns() {
         }
     }
     
-    let tasks: Vec<_> = (0..4).map(|i| fallible_task(i)).collect();
+    let tasks: Vec<_> = (0..4).map(fallible_task).collect();
     
     match try_join_all(tasks).await {
         Ok(results) => println!("    すべて成功: {:?}", results),
@@ -225,7 +225,7 @@ async fn select_patterns() {
     // キャンセレーション
     println!("\n  キャンセレーション:");
     
-    let (tx, mut rx) = tokio::sync::oneshot::channel::<()>();
+    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
     
     let cancellable_task = async {
         select! {
@@ -440,5 +440,13 @@ mod tests {
         tokio::time::timeout(Duration::from_secs(30), super::select_patterns())
             .await
             .expect("select_patterns がハングした");
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

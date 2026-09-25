@@ -196,9 +196,9 @@ fn main() {
     println!("Three::VALUE = {}", Three::VALUE);
 
     // コンパイル時assert
-    const _: () = const_assert(2 + 2 == 4);
+    const _: () = const_assert(std::mem::size_of::<u64>() == 8);
     println!("\n--- コンパイル時assert ---");
-    println!("2 + 2 == 4 がコンパイル時に検証されました");
+    println!("size_of::<u64>() == 8 がコンパイル時に検証されました");
 
     // べき乗計算
     const POWER: i32 = power(2, 10);
@@ -220,4 +220,12 @@ fn main() {
     println!("- 非決定的な操作");
 
     println!("\nconst関数とコンパイル時計算をマスターしました！");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

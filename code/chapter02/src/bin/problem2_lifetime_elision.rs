@@ -1,6 +1,32 @@
 // src/bin/problem2_lifetime_elision.rs
 // 復習問題2: ライフタイム省略の解答
 
+// 元の関数（ライフタイム省略が適用される）
+fn first_word(s: &str) -> &str {
+    let bytes = s.as_bytes();
+    
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &s[0..i];
+        }
+    }
+    
+    s
+}
+
+// コンパイラによる自動変換（概念的な表現）
+fn first_word_explicit<'a>(s: &'a str) -> &'a str {
+    let bytes = s.as_bytes();
+    
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &s[0..i];
+        }
+    }
+    
+    s
+}
+
 fn main() {
     println!("=== 復習問題2: ライフタイム省略 ===\n");
     
@@ -19,37 +45,12 @@ fn main() {
 
 // 基本的なライフタイム省略の例
 fn basic_elision_example() {
-    // 元の関数（ライフタイム省略が適用される）
-    fn first_word(s: &str) -> &str {
-        let bytes = s.as_bytes();
-        
-        for (i, &item) in bytes.iter().enumerate() {
-            if item == b' ' {
-                return &s[0..i];
-            }
-        }
-        
-        &s[..]
-    }
     
     println!("【基本的なライフタイム省略】");
     
     let sentence = String::from("Hello world from Rust programming");
     let word = first_word(&sentence);
     println!("最初の単語: '{}'", word);
-    
-    // コンパイラによる自動変換（概念的な表現）
-    fn first_word_explicit<'a>(s: &'a str) -> &'a str {
-        let bytes = s.as_bytes();
-        
-        for (i, &item) in bytes.iter().enumerate() {
-            if item == b' ' {
-                return &s[0..i];
-            }
-        }
-        
-        &s[..]
-    }
     
     let word_explicit = first_word_explicit(&sentence);
     println!("明示的ライフタイム版: '{}'", word_explicit);
@@ -266,4 +267,25 @@ fn method_elision_example() {
     println!("・入力と無関係な参照を返す");
     println!("・複雑なライフタイム関係がある");
     println!("→ このような場合は明示的なライフタイム注釈が必要");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}
+
+#[cfg(test)]
+mod first_word_tests {
+    use super::{first_word, first_word_explicit};
+
+    #[test]
+    fn elided_and_explicit_versions_return_same_first_word() {
+        for (input, expected) in [("Hello world", "Hello"), ("single", "single")] {
+            assert_eq!(first_word(input), expected);
+            assert_eq!(first_word_explicit(input), expected);
+        }
+    }
 }

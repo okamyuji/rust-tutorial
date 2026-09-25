@@ -94,7 +94,7 @@ async fn stream_combinators() {
     
     let nested = stream::iter(vec![vec![1, 2], vec![3, 4], vec![5]]);
     let flattened: Vec<i32> = nested
-        .flat_map(|vec| stream::iter(vec))
+        .flat_map(stream::iter)
         .collect()
         .await;
     
@@ -360,5 +360,13 @@ mod tests {
         tokio::time::timeout(Duration::from_secs(30), super::stream_processing_patterns())
             .await
             .expect("stream_processing_patterns がハングした");
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

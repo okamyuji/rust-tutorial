@@ -1,5 +1,18 @@
 // src/bin/lifetime_functions.rs
 
+// 異なるライフタイムを持つ参照
+fn first_word<'a>(s: &'a str) -> &'a str {
+    let bytes = s.as_bytes();
+    
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &s[0..i];
+        }
+    }
+    
+    s
+}
+
 fn main() {
     println!("=== 関数とライフタイム ===\n");
     
@@ -27,19 +40,6 @@ fn demonstrate_lifetime_parameters() {
         let string2 = String::from("xyz");
         let result = longest(string1.as_str(), string2.as_str());
         println!("最も長い文字列: {}", result);
-    }
-    
-    // 異なるライフタイムを持つ参照
-    fn first_word<'a>(s: &'a str) -> &'a str {
-        let bytes = s.as_bytes();
-        
-        for (i, &item) in bytes.iter().enumerate() {
-            if item == b' ' {
-                return &s[0..i];
-            }
-        }
-        
-        &s[..]
     }
     
     let sentence = String::from("hello world");
@@ -148,4 +148,23 @@ fn demonstrate_callback_lifetimes() {
     };
     
     println!("数値3は: {}", apply_to_3(closure));
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}
+
+#[cfg(test)]
+mod first_word_tests {
+    use super::first_word;
+
+    #[test]
+    fn first_word_stops_at_first_space_or_returns_whole_text() {
+        assert_eq!(first_word("hello world"), "hello");
+        assert_eq!(first_word("single"), "single");
+    }
 }

@@ -5,16 +5,20 @@
 
 use futures::{select, FutureExt};
 use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::oneshot;
 use tokio::time::{sleep, timeout};
 use tokio_util::sync::CancellationToken;
 
 /// キャンセレーション可能なタスクの基本実装
 pub struct CancellableTask {
     token: CancellationToken,
+}
+
+impl Default for CancellableTask {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CancellableTask {
@@ -38,11 +42,10 @@ impl CancellableTask {
         
         for i in 0..iterations {
             // 定期的にキャンセレーションをチェック
-            if i % 1000 == 0 {
-                if self.token.is_cancelled() {
+            if i % 1000 == 0
+                && self.token.is_cancelled() {
                     return Err("タスクがキャンセルされました");
                 }
-            }
             
             // 重い計算の模擬
             result = result.wrapping_add(i * i);
@@ -59,7 +62,7 @@ impl CancellableTask {
     /// I/O集約的なタスクの例（ファイルダウンロード模擬）
     pub async fn download_task(&self, file_size: usize, chunk_size: usize) -> Result<Vec<u8>, &'static str> {
         let mut downloaded_data = Vec::new();
-        let total_chunks = (file_size + chunk_size - 1) / chunk_size;
+        let total_chunks = file_size.div_ceil(chunk_size);
         
         for chunk_idx in 0..total_chunks {
             // キャンセレーションチェック
@@ -130,6 +133,12 @@ pub struct Worker {
     task_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
+impl Default for Worker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Worker {
     pub fn new() -> Self {
         Self {
@@ -197,6 +206,12 @@ pub struct TaskGroup {
     tasks: Vec<tokio::task::JoinHandle<()>>,
 }
 
+impl Default for TaskGroup {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TaskGroup {
     pub fn new() -> Self {
         Self {
@@ -243,6 +258,12 @@ impl TaskGroup {
 pub struct ResourceManager {
     resources: Vec<String>,
     cleanup_performed: bool,
+}
+
+impl Default for ResourceManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ResourceManager {
@@ -541,5 +562,46 @@ mod tests {
         let elapsed = start.elapsed();
         
         assert!(elapsed < Duration::from_secs(1), "キャンセレーションが効果的でない");
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod compute_cancellation_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn compute_returns_sum_of_squares_when_not_cancelled() {
+        let task = CancellableTask::new();
+
+        assert_eq!(task.compute_intensive_task(5).await, Ok(30));
+    }
+
+    #[tokio::test]
+    async fn compute_fails_immediately_when_cancelled_before_start() {
+        let task = CancellableTask::new();
+        task.cancel();
+
+        assert!(task.compute_intensive_task(1).await.is_err());
+    }
+
+    // i=0 の yield 中にキャンセルされても、次の確認は i=1000 なので 500 回なら完走する
+    #[tokio::test]
+    async fn compute_checks_cancellation_only_every_thousand_iterations() {
+        let task = CancellableTask::new();
+        let token = task.cancel_token();
+        tokio::spawn(async move { token.cancel() });
+
+        assert_eq!(
+            task.compute_intensive_task(500).await,
+            Ok((0..500u64).map(|i| i * i).sum())
+        );
     }
 }

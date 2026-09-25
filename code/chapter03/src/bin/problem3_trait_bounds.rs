@@ -2,7 +2,6 @@
 // 復習問題3: 複数トレイト境界を持つジェネリック関数
 
 use std::fmt::{Debug, Display};
-use std::str::FromStr;
 use std::hash::Hash;
 use std::collections::HashMap;
 
@@ -159,7 +158,7 @@ fn complex_trait_bounds() {
         (sorted_items, string_representations)
     }
     
-    let numbers = vec![3.14, 1.41, 2.71, 0.57];
+    let numbers = vec![std::f64::consts::PI, 1.41, 2.71, 0.57];
     let (sorted, strings) = conditional_processing(numbers);
     println!("ソート結果: {:?}", sorted);
     println!("文字列表現: {:?}", strings);
@@ -246,7 +245,7 @@ fn where_clause_examples() {
         println!("処理対象: {:?}", data);
         
         let processed: Vec<String> = data.iter()
-            .map(|item| processor(item))
+            .map(processor)
             .collect();
         
         println!("処理済み文字列: {:?}", processed);
@@ -388,7 +387,7 @@ fn practical_applications() {
     
     // 商品別数量集計
     println!("\n商品別数量集計:");
-    let quantity_by_product = aggregate_data(
+    let _quantity_by_product = aggregate_data(
         sales.clone(),
         |sale| sale.product.clone(),
         |acc: i32, sale| acc + sale.quantity,
@@ -440,10 +439,10 @@ fn practical_applications() {
     ];
     
     println!("\n名前順ソート:");
-    let sorted_by_name = constrained_sort(students.clone(), |s| s.name.clone());
+    let _sorted_by_name = constrained_sort(students.clone(), |s| s.name.clone());
     
     println!("\n成績順ソート:");
-    let sorted_by_grade = constrained_sort(students, |s| format!("{:03}", s.grade));
+    let _sorted_by_grade = constrained_sort(students, |s| format!("{:03}", s.grade));
     
     println!("\n【設計パターンのポイント】");
     println!("✓ 複数の制約を組み合わせた柔軟な関数設計");
@@ -451,4 +450,12 @@ fn practical_applications() {
     println!("✓ 高階関数と組み合わせた再利用可能な設計");
     println!("✓ エラーハンドリングの組み込み");
     println!("✓ 実用的なドメインロジックへの適用");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

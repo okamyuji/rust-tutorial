@@ -205,8 +205,8 @@ where
     }
 
     fn set(&mut self, key: K, value: V) -> Result<Option<V>, Self::Error> {
-        if self.data.contains_key(&key) {
-            return Ok(self.data.insert(key, value));
+        if let Some(slot) = self.data.get_mut(&key) {
+            return Ok(Some(std::mem::replace(slot, value)));
         }
 
         if self.is_full() {
@@ -268,6 +268,65 @@ where
     fn reset_stats(&mut self) {
         self.hits = 0;
         self.misses = 0;
+    }
+}
+
+struct StatsCache<K, V> {
+    cache: LRUCache<K, V>,
+    access_frequency: HashMap<K, u64>,
+    last_access: HashMap<K, Instant>,
+}
+
+impl<K, V> StatsCache<K, V>
+where
+    K: Clone + Hash + Eq + Debug,
+    V: Clone + Debug,
+{
+    fn new(capacity: usize) -> Self {
+        StatsCache {
+            cache: LRUCache::new(capacity),
+            access_frequency: HashMap::new(),
+            last_access: HashMap::new(),
+        }
+    }
+
+    fn get_detailed_stats(&mut self, key: &K) -> Option<&V> {
+        let result = self.cache.get_with_stats(key);
+
+        if result.is_some() {
+            *self.access_frequency.entry(key.clone()).or_insert(0) += 1;
+            self.last_access.insert(key.clone(), Instant::now());
+        }
+
+        result
+    }
+
+    fn get_frequency(&self, key: &K) -> u64 {
+        self.access_frequency.get(key).copied().unwrap_or(0)
+    }
+
+    fn get_last_access(&self, key: &K) -> Option<&Instant> {
+        self.last_access.get(key)
+    }
+
+    fn most_accessed_keys(&self, limit: usize) -> Vec<(K, u64)> {
+        let mut frequencies: Vec<_> = self
+            .access_frequency
+            .iter()
+            .map(|(k, &v)| (k.clone(), v))
+            .collect();
+        frequencies.sort_by_key(|&(_, count)| std::cmp::Reverse(count));
+        frequencies.into_iter().take(limit).collect()
+    }
+
+    fn least_accessed_keys(&self, limit: usize) -> Vec<(K, u64)> {
+        let mut frequencies: Vec<_> = self
+            .access_frequency
+            .iter()
+            .map(|(k, &v)| (k.clone(), v))
+            .collect();
+        frequencies.sort_by_key(|&(_, count)| count);
+        frequencies.into_iter().take(limit).collect()
     }
 }
 
@@ -599,9 +658,9 @@ trait CacheStats {
 // キャッシュ戦略の列挙型
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum EvictionStrategy {
-    LRU,    // Least Recently Used
-    FIFO,   // First In, First Out
-    LFU,    // Least Frequently Used
+    Lru,    // Least Recently Used
+    Fifo,   // First In, First Out
+    Lfu,    // Least Frequently Used
     Random, // Random eviction
 }
 
@@ -808,65 +867,6 @@ fn fifo_cache_demo() {
 // 統計機能付きキャッシュ
 fn stats_cache_demo() {
     println!("\n【統計機能付きキャッシュ】");
-
-    struct StatsCache<K, V> {
-        cache: LRUCache<K, V>,
-        access_frequency: HashMap<K, u64>,
-        last_access: HashMap<K, Instant>,
-    }
-
-    impl<K, V> StatsCache<K, V>
-    where
-        K: Clone + Hash + Eq + Debug,
-        V: Clone + Debug,
-    {
-        fn new(capacity: usize) -> Self {
-            StatsCache {
-                cache: LRUCache::new(capacity),
-                access_frequency: HashMap::new(),
-                last_access: HashMap::new(),
-            }
-        }
-
-        fn get_detailed_stats(&mut self, key: &K) -> Option<&V> {
-            let result = self.cache.get_with_stats(key);
-
-            if result.is_some() {
-                *self.access_frequency.entry(key.clone()).or_insert(0) += 1;
-                self.last_access.insert(key.clone(), Instant::now());
-            }
-
-            result
-        }
-
-        fn get_frequency(&self, key: &K) -> u64 {
-            self.access_frequency.get(key).copied().unwrap_or(0)
-        }
-
-        fn get_last_access(&self, key: &K) -> Option<&Instant> {
-            self.last_access.get(key)
-        }
-
-        fn most_accessed_keys(&self, limit: usize) -> Vec<(K, u64)> {
-            let mut frequencies: Vec<_> = self
-                .access_frequency
-                .iter()
-                .map(|(k, &v)| (k.clone(), v))
-                .collect();
-            frequencies.sort_by(|a, b| b.1.cmp(&a.1));
-            frequencies.into_iter().take(limit).collect()
-        }
-
-        fn least_accessed_keys(&self, limit: usize) -> Vec<(K, u64)> {
-            let mut frequencies: Vec<_> = self
-                .access_frequency
-                .iter()
-                .map(|(k, &v)| (k.clone(), v))
-                .collect();
-            frequencies.sort_by(|a, b| a.1.cmp(&b.1));
-            frequencies.into_iter().take(limit).collect()
-        }
-    }
 
     // StatsCache のテスト
     let mut stats_cache = StatsCache::new(4);
@@ -1348,6 +1348,26 @@ mod tests {
     }
 
     #[test]
+    fn stats_cache_orders_keys_by_access_frequency() {
+        let mut stats = StatsCache::new(4);
+        for (k, v) in [("a", 1), ("b", 2), ("c", 3)] {
+            stats.cache.set(s(k), v).unwrap();
+        }
+        for (key, times) in [("a", 3), ("b", 1), ("c", 2)] {
+            for _ in 0..times {
+                assert!(stats.get_detailed_stats(&s(key)).is_some());
+            }
+        }
+        assert!(stats.get_detailed_stats(&s("missing")).is_none());
+
+        assert_eq!(stats.most_accessed_keys(2), vec![(s("a"), 3), (s("c"), 2)]);
+        assert_eq!(stats.least_accessed_keys(2), vec![(s("b"), 1), (s("c"), 2)]);
+        assert_eq!(stats.get_frequency(&s("a")), 3);
+        assert_eq!(stats.get_frequency(&s("missing")), 0);
+        assert!(stats.get_last_access(&s("a")).is_some());
+    }
+
+    #[test]
     fn timed_get_or_insert_with_counts_hit_for_fresh_entry_and_inserts_on_miss() {
         let mut cache = timed_with_entry(Duration::ZERO, TTL);
 
@@ -1378,5 +1398,13 @@ mod tests {
         assert_eq!(lru.hit_rate(), 0.5);
         assert!(lru.is_full());
         assert!(lru.contains_key(&s("a")));
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

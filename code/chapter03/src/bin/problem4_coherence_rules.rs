@@ -185,7 +185,7 @@ fn newtype_pattern_solution() {
 
     println!("\nジェネリック版の例:");
     let int_option = DisplayOptionGeneric::some(42);
-    let float_option = DisplayOptionGeneric::some(3.14);
+    let float_option = DisplayOptionGeneric::some(std::f64::consts::PI);
     let none_int: DisplayOptionGeneric<i32> = DisplayOptionGeneric::none();
 
     println!("  整数Option: {}", int_option);
@@ -640,4 +640,12 @@ fn advanced_coherence_examples() {
     println!("✓ ラッパー構造体: 透明性が必要な場合");
     println!("✓ ブランケット実装: 汎用的な機能提供");
     println!("✓ マーカートレイト: 型の分類と特殊化");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

@@ -249,13 +249,8 @@ fn main() {
     println!("4. 段階的な開発とテスト");
     println!("5. compile_error! で明確なエラーメッセージ");
     
-    // Rust 1.47以降で使用可能
-    #[cfg(feature = "trace-macros")]
-    {
-        trace_macros!(true);
-        debug_macro!(traced_call);
-        trace_macros!(false);
-    }
+    // trace_macros! は nightly 専用のため stable では使えない。
+    // 展開結果は `cargo +nightly rustc --bin debugging_macros -- -Z trace-macros` や cargo-expand で確かめる
 
     println!("\nマクロのデバッグ方法をマスターしました！");
 }
@@ -267,5 +262,13 @@ mod tests {
         debug_patterns!(Vec<i32>);
         debug_patterns!(2 + 2);
         check_recursion_limit!(a b c d e f g h i j);
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

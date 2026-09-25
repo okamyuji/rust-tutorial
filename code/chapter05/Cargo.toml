@@ -3,6 +3,10 @@ name = "chapter05"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+# debugging_macros のデバッグ出力を有効にする（cargo run --features macro-debug）
+macro-debug = []
+
 [dependencies]
 # 手続き的マクロのテスト用
 serde = { version = "1.0", features = ["derive"] }
@@ -50,3 +54,8 @@ path = "src/bin/problem3_type_safe_units.rs"
 
 # 手続き的マクロの例（別クレートとして後で作成）
 # proc_macro_derive と proc_macro_attribute は別プロジェクトで実装
+
+# サンプルは説明用に型やAPIを並べるため、未使用の定義は警告しない
+[lints.rust]
+dead_code = "allow"
+unused_macros = "allow"

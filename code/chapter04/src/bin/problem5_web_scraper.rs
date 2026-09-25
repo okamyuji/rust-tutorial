@@ -7,7 +7,6 @@
 use futures::{stream, StreamExt};
 use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::sync::{Semaphore, RwLock};
@@ -385,10 +384,8 @@ impl BatchScraper {
         let initial_results = self.scraper.scrape_urls(base_urls).await;
         
         // 成功した結果からリンクを収集
-        for result in initial_results {
-            if let Ok(page_result) = result {
-                discovered_urls.extend(page_result.links.clone());
-            }
+        for page_result in initial_results.into_iter().flatten() {
+            discovered_urls.extend(page_result.links.clone());
         }
         
         // 重複を除去し、新しいURLのみを抽出
@@ -501,7 +498,7 @@ async fn demo_basic_scraping(
     println!("  {} URLのスクレイピングを開始...", urls.len());
     let start_time = Instant::now();
     
-    let results = scraper.scrape_urls(urls).await;
+    let _results = scraper.scrape_urls(urls).await;
     let elapsed = start_time.elapsed();
     
     println!("  スクレイピング完了 (経過時間: {:.2}秒)", elapsed.as_secs_f64());
@@ -619,5 +616,60 @@ mod tests {
         assert_eq!(config.max_concurrent_requests, 10);
         assert_eq!(config.max_retries, 3);
         assert_eq!(config.user_agent, "Rust-WebScraper/1.0");
+    }
+}
+
+#[cfg(test)]
+mod sitemap_tests {
+    use super::*;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    // トップページが /child へのリンクを返す、テスト用のローカル HTTP サーバー
+    async fn serve_local_site() -> String {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                tokio::spawn(async move {
+                    let mut buf = [0u8; 2048];
+                    let n = socket.read(&mut buf).await.unwrap_or(0);
+                    let request = String::from_utf8_lossy(&buf[..n]);
+                    let body = if request.starts_with("GET / ") {
+                        r#"<html><head><title>Top</title></head><body><a href="/child">child</a></body></html>"#
+                    } else {
+                        "<html><head><title>Child</title></head><body>leaf</body></html>"
+                    };
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        body.len(),
+                        body
+                    );
+                    let _ = socket.write_all(response.as_bytes()).await;
+                });
+            }
+        });
+        base
+    }
+
+    #[tokio::test]
+    async fn scrape_sitemap_follows_links_and_skips_failed_pages() {
+        let base = serve_local_site().await;
+        let config = ScrapingConfig {
+            delay_between_requests: Duration::from_millis(1),
+            retry_delay: Duration::from_millis(1),
+            max_retries: 1,
+            request_timeout: Duration::from_secs(5),
+            ..Default::default()
+        };
+        let unreachable = "http://127.0.0.1:1/".to_string();
+
+        let results = BatchScraper::new(config)
+            .scrape_sitemap(vec![format!("{base}/"), unreachable.clone()])
+            .await;
+
+        let urls: Vec<&str> = results.iter().map(|r| r.url.as_str()).collect();
+        assert!(urls.contains(&format!("{base}/").as_str()), "{urls:?}");
+        assert!(urls.contains(&format!("{base}/child").as_str()), "{urls:?}");
+        assert!(!urls.contains(&unreachable.as_str()), "{urls:?}");
     }
 }

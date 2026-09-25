@@ -524,7 +524,7 @@ impl Transaction for SqliteTransaction {
         Ok(())
     }
     
-    async fn query(&self, sql: &str) -> Result<QueryResult, Self::Error> {
+    async fn query(&self, _sql: &str) -> Result<QueryResult, Self::Error> {
         if self.rolled_back || self.committed {
             return Err(DatabaseError::TransactionFailed("Transaction not active".to_string()));
         }
@@ -538,7 +538,7 @@ impl Transaction for SqliteTransaction {
         })
     }
     
-    async fn execute(&self, sql: &str) -> Result<ExecuteResult, Self::Error> {
+    async fn execute(&self, _sql: &str) -> Result<ExecuteResult, Self::Error> {
         if self.rolled_back || self.committed {
             return Err(DatabaseError::TransactionFailed("Transaction not active".to_string()));
         }
@@ -810,5 +810,13 @@ mod tests {
             conn.prepare("SELECT 1").await;
 
         assert!(stmt.is_ok());
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main().unwrap();
     }
 }

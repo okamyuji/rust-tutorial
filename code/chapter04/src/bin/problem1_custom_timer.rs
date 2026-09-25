@@ -325,6 +325,12 @@ pub struct TimerManager {
     timers: Vec<Box<dyn Future<Output = ()> + Send + Unpin>>,
 }
 
+impl Default for TimerManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TimerManager {
     pub fn new() -> Self {
         TimerManager {
@@ -475,4 +481,12 @@ async fn concurrent_timers_test() {
     println!("✓ 高精度タイミング制御");
     println!("✓ 並行タイマーの効率的管理");
     println!("✓ メモリ安全性とスレッド安全性");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

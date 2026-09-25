@@ -1,6 +1,12 @@
 // src/bin/problem2_borrowing_rules.rs
 // 復習問題2: 借用チェッカーの解答
 
+// 正しい方法1: 所有権を返す
+fn no_dangle1() -> String {
+    
+    String::from("hello")  // 所有権を移動
+}
+
 fn main() {
     println!("=== 復習問題2: 借用チェッカー ===\n");
     
@@ -116,12 +122,6 @@ fn main() {
         }
         */
         
-        // 正しい方法1: 所有権を返す
-        fn no_dangle1() -> String {
-            let s = String::from("hello");
-            s  // 所有権を移動
-        }
-        
         // 正しい方法2: ライフタイムパラメータを使用
         fn no_dangle2(s: &String) -> &String {
             s  // 借用した参照をそのまま返す
@@ -149,5 +149,21 @@ fn main() {
         println!("追加後: {:?}", vec);
         
         println!("解説: NLLにより、参照の実際の使用期間でのみ借用が有効");
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}
+
+#[cfg(test)]
+mod helper_tests {
+    #[test]
+    fn no_dangle1_returns_owned_string() {
+        assert_eq!(super::no_dangle1(), "hello");
     }
 }

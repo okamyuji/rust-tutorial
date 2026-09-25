@@ -293,9 +293,17 @@ mod tests {
         assert_eq!(os, expected);
 
         let fallback = cfg_match! {
-            #[cfg(target_os = "no-such-os")] 1,
+            #[cfg(any())] 1,
             _ => 2
         };
         assert_eq!(fallback, 2);
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

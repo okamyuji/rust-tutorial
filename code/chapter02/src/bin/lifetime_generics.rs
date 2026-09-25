@@ -3,6 +3,33 @@
 use std::fmt::Display;
 use std::marker::PhantomData;
 
+// スライスのラッパー
+struct SliceWrapper<'a, T> {
+    data: &'a [T],
+    start: usize,
+    end: usize,
+}
+
+impl<'a, T> SliceWrapper<'a, T> {
+    fn new(data: &'a [T]) -> Self {
+        let len = data.len();
+        SliceWrapper {
+            data,
+            start: 0,
+            end: len,
+        }
+    }
+
+    fn slice(&self) -> &'a [T] {
+        &self.data[self.start..self.end]
+    }
+
+    fn narrow(&mut self, new_start: usize, new_end: usize) {
+        self.start += new_start;
+        self.end = self.start + new_end.min(self.end - self.start);
+    }
+}
+
 fn main() {
     println!("=== ライフタイムとジェネリクスの組み合わせ ===\n");
 
@@ -245,33 +272,6 @@ fn complex_generic_struct() {
 
 fn lifetime_container_examples() {
     println!("\n[ライフタイムを持つコンテナ]");
-
-    // スライスのラッパー
-    struct SliceWrapper<'a, T> {
-        data: &'a [T],
-        start: usize,
-        end: usize,
-    }
-
-    impl<'a, T> SliceWrapper<'a, T> {
-        fn new(data: &'a [T]) -> Self {
-            let len = data.len();
-            SliceWrapper {
-                data,
-                start: 0,
-                end: len,
-            }
-        }
-
-        fn slice(&self) -> &'a [T] {
-            &self.data[self.start..self.end]
-        }
-
-        fn narrow(&mut self, new_start: usize, new_end: usize) {
-            self.start = self.start + new_start;
-            self.end = self.start + new_end.min(self.end - self.start);
-        }
-    }
 
     let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let mut wrapper = SliceWrapper::new(&data);
@@ -553,4 +553,29 @@ fn type_level_programming() {
     let builder = Builder::new().add_data("構築された").finalize();
 
     println!("ビルダー結果: {}", builder.get());
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}
+
+#[cfg(test)]
+mod slice_wrapper_tests {
+    use super::SliceWrapper;
+
+    #[test]
+    fn narrow_moves_start_and_limits_length_within_current_window() {
+        let data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        let mut wrapper = SliceWrapper::new(&data);
+
+        wrapper.narrow(2, 5);
+        assert_eq!(wrapper.slice(), &[3, 4, 5, 6, 7]);
+
+        wrapper.narrow(1, 10);
+        assert_eq!(wrapper.slice(), &[4, 5, 6, 7]);
+    }
 }

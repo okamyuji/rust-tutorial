@@ -215,10 +215,10 @@ impl ProductBuilder {
 
     pub fn build(self) -> Result<Product, BuilderError> {
         Ok(Product {
-            name: self.name.ok_or_else(|| BuilderError::MissingField("name"))?,
-            price: self.price.ok_or_else(|| BuilderError::MissingField("price"))?,
-            quantity: self.quantity.ok_or_else(|| BuilderError::MissingField("quantity"))?,
-            category: self.category.ok_or_else(|| BuilderError::MissingField("category"))?,
+            name: self.name.ok_or(BuilderError::MissingField("name"))?,
+            price: self.price.ok_or(BuilderError::MissingField("price"))?,
+            quantity: self.quantity.ok_or(BuilderError::MissingField("quantity"))?,
+            category: self.category.ok_or(BuilderError::MissingField("category"))?,
         })
     }
 }
@@ -370,7 +370,7 @@ mod tests {
         
         assert_eq!(config.host, "localhost");
         assert_eq!(config.port, 8080);
-        assert_eq!(config.debug, false);
+        assert!(!config.debug);
     }
 
     #[test]
@@ -394,5 +394,13 @@ mod tests {
             .name("Test".to_string())
             .and_then(|b| b.price(-1.0));
         assert!(result.is_err());
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

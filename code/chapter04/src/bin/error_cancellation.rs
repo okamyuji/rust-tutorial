@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 use tokio::{select, time::{sleep, timeout, interval}};
-use tokio::sync::{oneshot, mpsc};
+use tokio::sync::oneshot;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -198,7 +198,7 @@ async fn cancellation_patterns() {
     let task = tokio::spawn(async move {
         select! {
             _ = async {
-                for i in 0.. {
+                for i in 0..u32::MAX {
                     println!("    作業中: {}", i);
                     sleep(Duration::from_millis(100)).await;
                 }
@@ -278,7 +278,7 @@ async fn cancellation_patterns() {
     let task = tokio::spawn(async move {
         select! {
             _ = async {
-                for i in 0.. {
+                for i in 0..u32::MAX {
                     if child_token.is_cancelled() {
                         break;
                     }
@@ -508,5 +508,13 @@ mod tests {
         tokio::time::timeout(Duration::from_secs(30), super::error_propagation())
             .await
             .expect("error_propagation がハングした");
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

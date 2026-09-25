@@ -366,7 +366,7 @@ fn variance_safety_examples() {
 
         // 異なるライフタイムの混合は型システムが防ぐ
         {
-            let _temp = vec![7, 8, 9];
+            let _temp = [7, 8, 9];
             // safe_swap(&mut data1, &mut temp); // コンパイルエラー
             println!("異なるライフタイムの可変参照は混合不可（型システムが防ぐ）");
         }
@@ -425,4 +425,12 @@ fn variance_safety_examples() {
     println!("✓ 不変(&mut T, Cell<T>): 安全性のため変換禁止（書き込み可能）");
     println!("✓ 反変(関数引数): 安全な拡大変換（より汎用的な関数を特殊な場所で使用）");
     println!("✓ Rustの型システムが変性を通じてメモリ安全性を保証");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

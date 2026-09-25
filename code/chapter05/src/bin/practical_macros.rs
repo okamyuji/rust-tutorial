@@ -128,15 +128,9 @@ macro_rules! simple_builder {
 macro_rules! lazy_static {
     ($name:ident : $type:ty = $init:expr) => {
         fn $name() -> &'static $type {
-            static ONCE: std::sync::Once = std::sync::Once::new();
-            static mut VALUE: Option<$type> = None;
-            
-            unsafe {
-                ONCE.call_once(|| {
-                    VALUE = Some($init);
-                });
-                VALUE.as_ref().unwrap()
-            }
+            // static mut と unsafe を使わず、初回だけ初期化する標準の OnceLock に任せる
+            static VALUE: std::sync::OnceLock<$type> = std::sync::OnceLock::new();
+            VALUE.get_or_init(|| $init)
         }
     };
 }
@@ -315,13 +309,13 @@ fn main() {
 
     // 遅延評価
     println!("\n--- 遅延評価 ---");
-    lazy_static!(EXPENSIVE_DATA: Vec<i32> = {
+    lazy_static!(expensive_data: Vec<i32> = {
         println!("高コストな初期化を実行");
         vec![1, 2, 3, 4, 5]
     });
     
-    println!("初回アクセス: {:?}", EXPENSIVE_DATA());
-    println!("2回目アクセス: {:?}", EXPENSIVE_DATA());
+    println!("初回アクセス: {:?}", expensive_data());
+    println!("2回目アクセス: {:?}", expensive_data());
 
     // リトライ処理
     println!("\n--- リトライ処理 ---");

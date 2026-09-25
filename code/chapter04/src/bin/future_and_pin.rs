@@ -4,7 +4,6 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
 use std::time::{Duration, Instant};
-use std::sync::{Arc, Mutex};
 use pin_project::pin_project;
 
 #[tokio::main]
@@ -67,7 +66,7 @@ async fn future_trait_basics() {
     impl Future for TimerFuture {
         type Output = ();
         
-        fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             if Instant::now() >= self.deadline {
                 println!("  TimerFuture: タイマー完了");
                 Poll::Ready(())
@@ -98,12 +97,12 @@ async fn pin_demonstration() {
         data: String,
     }
     
-    let mut movable = Movable { data: "移動可能".to_string() };
+    let movable = Movable { data: "移動可能".to_string() };
     let ptr1 = &movable as *const Movable;
     println!("  移動前のアドレス: {:p}", ptr1);
     
     // 移動
-    let mut moved = movable;
+    let moved = movable;
     let ptr2 = &moved as *const Movable;
     println!("  移動後のアドレス: {:p}", ptr2);
     println!("  アドレスが変わった: {}", ptr1 != ptr2);
@@ -284,4 +283,12 @@ async fn pin_project_demo() {
     println!("  3. カスタムFuture実装時にPinが重要");
     println!("  4. 自己参照構造体にはPinが必須");
     println!("  5. pin-projectクレートで安全に実装");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

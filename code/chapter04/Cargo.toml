@@ -17,3 +17,7 @@ serde_json = "1.0"
 url = "2.0"
 html-escape = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
+
+# サンプルは説明用に型やAPIを並べるため、未使用の定義は警告しない
+[lints.rust]
+dead_code = "allow"

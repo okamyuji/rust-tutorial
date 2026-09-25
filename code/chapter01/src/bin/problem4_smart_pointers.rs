@@ -212,6 +212,8 @@ fn tree_structure_example() {
     #[derive(Debug)]
     struct TreeNode {
         data: i32,
+        // Box<T> の使い方を示すためにあえて包む。Vec は要素を既にヒープに置くので、実務では Vec<TreeNode> で足りる
+        #[allow(clippy::vec_box)]
         children: Vec<Box<TreeNode>>,
     }
     
@@ -302,6 +304,8 @@ fn tree_structure_example() {
         name: String,
         is_file: bool,
         size: Option<u64>,
+        // Box<T> の使い方を示すためにあえて包む。Vec は要素を既にヒープに置くので、実務では Vec<FileNode> で足りる
+        #[allow(clippy::vec_box)]
         children: Vec<Box<FileNode>>,
     }
     
@@ -402,4 +406,12 @@ fn selection_guide() {
     println!("クローンコスト: Box<T>(不可) < Rc<T> < Arc<T>");
     println!("メモリオーバーヘッド: Box<T>(0) = Rc<T>(8B) = Arc<T>(8B)");
     println!("スレッドセーフティ: Box<T>(条件次第) < Rc<T>(×) < Arc<T>(○)");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

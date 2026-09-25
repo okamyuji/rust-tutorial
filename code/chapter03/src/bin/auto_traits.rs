@@ -137,7 +137,7 @@ fn auto_traits_demo() {
         data: Rc<String>,
     }
 
-    let not_sendable = NotSendable {
+    let _not_sendable = NotSendable {
         data: Rc::new("shared".to_string()),
     };
 
@@ -185,7 +185,7 @@ fn auto_traits_demo() {
     let custom_send = CustomSend::<i32> {
         _phantom: PhantomData,
     };
-    let custom_not_send = CustomNotSend::<i32> {
+    let _custom_not_send = CustomNotSend::<i32> {
         _phantom: PhantomData,
     };
 
@@ -377,4 +377,12 @@ fn negative_reasoning() {
 struct PinnedData {
     data: String,
     _pin: PhantomData<std::marker::PhantomPinned>,
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
 }

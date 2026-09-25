@@ -197,7 +197,7 @@ async fn runtime_configuration() {
     println!("\n  現在のランタイム情報:");
     
     // 現在のランタイムハンドル
-    let handle = tokio::runtime::Handle::current();
+    let _handle = tokio::runtime::Handle::current();
     
     // メトリクスの取得（unstable feature）
     println!("    アクティブなタスク数: （メトリクスAPIは不安定）");
@@ -249,5 +249,13 @@ mod tests {
     #[tokio::test]
     async fn runtime_configuration_runs_inside_tokio_runtime() {
         super::runtime_configuration().await;
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

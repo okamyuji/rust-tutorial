@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 use std::ops::{Add, Sub, Mul, Div};
 
 // 単位の次元を表すトレイト
-trait Dimension {
+pub trait Dimension {
     const NAME: &'static str;
 }
 
@@ -365,5 +365,13 @@ mod tests {
         let v = meters(10.0) / seconds(1.0);
         let ke = calculate_kinetic_energy(m, v);
         assert_eq!(ke.value(), 100.0); // 1/2 * 2 * 10^2 = 100
+    }
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
     }
 }

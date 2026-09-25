@@ -1,7 +1,139 @@
 // src/bin/problem5_statistics.rs
 // 復習問題5: RefCellを使ったStatistics構造体の解答
 
-// RefCellは各関数内で個別にインポート
+use std::cell::RefCell;
+
+#[derive(Debug, Clone)]
+struct StatisticalData {
+    count: u32,
+    sum: f64,
+    sum_of_squares: f64,
+    min: Option<f64>,
+    max: Option<f64>,
+    values: Vec<f64>, // 中央値計算用
+}
+
+impl StatisticalData {
+    fn new() -> Self {
+        StatisticalData {
+            count: 0,
+            sum: 0.0,
+            sum_of_squares: 0.0,
+            min: None,
+            max: None,
+            values: Vec::new(),
+        }
+    }
+}
+
+struct AdvancedStatistics {
+    data: RefCell<StatisticalData>,
+    keep_values: bool, // 中央値計算のために値を保持するか
+}
+
+impl AdvancedStatistics {
+    fn new(keep_values: bool) -> Self {
+        AdvancedStatistics {
+            data: RefCell::new(StatisticalData::new()),
+            keep_values,
+        }
+    }
+    
+    fn record_value(&self, value: f64) {
+        let mut data = self.data.borrow_mut();
+        
+        data.count += 1;
+        data.sum += value;
+        data.sum_of_squares += value * value;
+        
+        // 最小値・最大値の更新
+        data.min = Some(data.min.map_or(value, |min| min.min(value)));
+        data.max = Some(data.max.map_or(value, |max| max.max(value)));
+        
+        // 値の保持（中央値計算用）
+        if self.keep_values {
+            data.values.push(value);
+        }
+    }
+    
+    fn get_count(&self) -> u32 {
+        self.data.borrow().count
+    }
+    
+    fn get_mean(&self) -> Option<f64> {
+        let data = self.data.borrow();
+        if data.count > 0 {
+            Some(data.sum / data.count as f64)
+        } else {
+            None
+        }
+    }
+    
+    fn get_variance(&self) -> Option<f64> {
+        let data = self.data.borrow();
+        if data.count > 1 {
+            let mean = data.sum / data.count as f64;
+            let variance = (data.sum_of_squares - data.count as f64 * mean * mean) / (data.count - 1) as f64;
+            Some(variance)
+        } else {
+            None
+        }
+    }
+    
+    fn get_standard_deviation(&self) -> Option<f64> {
+        self.get_variance().map(|v| v.sqrt())
+    }
+    
+    fn get_min(&self) -> Option<f64> {
+        self.data.borrow().min
+    }
+    
+    fn get_max(&self) -> Option<f64> {
+        self.data.borrow().max
+    }
+    
+    fn get_median(&self) -> Option<f64> {
+        if !self.keep_values {
+            return None;
+        }
+        
+        let mut data = self.data.borrow_mut();
+        if data.values.is_empty() {
+            return None;
+        }
+        
+        data.values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let len = data.values.len();
+        
+        if len.is_multiple_of(2) {
+            Some((data.values[len / 2 - 1] + data.values[len / 2]) / 2.0)
+        } else {
+            Some(data.values[len / 2])
+        }
+    }
+    
+    fn get_summary(&self) -> String {
+        let data = self.data.borrow();
+        
+        if data.count == 0 {
+            return "No data recorded".to_string();
+        }
+        
+        let mean = self.get_mean().unwrap_or(0.0);
+        let std_dev = self.get_standard_deviation().unwrap_or(0.0);
+        let min = self.get_min().unwrap_or(0.0);
+        let max = self.get_max().unwrap_or(0.0);
+        
+        format!(
+            "Statistics Summary:\n  Count: {}\n  Mean: {:.2}\n  Std Dev: {:.2}\n  Min: {:.2}\n  Max: {:.2}",
+            data.count, mean, std_dev, min, max
+        )
+    }
+    
+    fn reset(&self) {
+        *self.data.borrow_mut() = StatisticalData::new();
+    }
+}
 
 fn main() {
     println!("=== 復習問題5: RefCellを使ったStatistics構造体 ===\n");
@@ -21,7 +153,6 @@ fn main() {
 
 // 基本的なStatistics実装
 fn basic_statistics_example() {
-    use std::cell::RefCell;
     
     struct Statistics {
         counter: RefCell<i32>,
@@ -97,139 +228,6 @@ fn basic_statistics_example() {
 
 // より高度な統計機能を持つ実装
 fn advanced_statistics_example() {
-    use std::cell::RefCell;
-    
-    #[derive(Debug, Clone)]
-    struct StatisticalData {
-        count: u32,
-        sum: f64,
-        sum_of_squares: f64,
-        min: Option<f64>,
-        max: Option<f64>,
-        values: Vec<f64>, // 中央値計算用
-    }
-    
-    impl StatisticalData {
-        fn new() -> Self {
-            StatisticalData {
-                count: 0,
-                sum: 0.0,
-                sum_of_squares: 0.0,
-                min: None,
-                max: None,
-                values: Vec::new(),
-            }
-        }
-    }
-    
-    struct AdvancedStatistics {
-        data: RefCell<StatisticalData>,
-        keep_values: bool, // 中央値計算のために値を保持するか
-    }
-    
-    impl AdvancedStatistics {
-        fn new(keep_values: bool) -> Self {
-            AdvancedStatistics {
-                data: RefCell::new(StatisticalData::new()),
-                keep_values,
-            }
-        }
-        
-        fn record_value(&self, value: f64) {
-            let mut data = self.data.borrow_mut();
-            
-            data.count += 1;
-            data.sum += value;
-            data.sum_of_squares += value * value;
-            
-            // 最小値・最大値の更新
-            data.min = Some(data.min.map_or(value, |min| min.min(value)));
-            data.max = Some(data.max.map_or(value, |max| max.max(value)));
-            
-            // 値の保持（中央値計算用）
-            if self.keep_values {
-                data.values.push(value);
-            }
-        }
-        
-        fn get_count(&self) -> u32 {
-            self.data.borrow().count
-        }
-        
-        fn get_mean(&self) -> Option<f64> {
-            let data = self.data.borrow();
-            if data.count > 0 {
-                Some(data.sum / data.count as f64)
-            } else {
-                None
-            }
-        }
-        
-        fn get_variance(&self) -> Option<f64> {
-            let data = self.data.borrow();
-            if data.count > 1 {
-                let mean = data.sum / data.count as f64;
-                let variance = (data.sum_of_squares - data.count as f64 * mean * mean) / (data.count - 1) as f64;
-                Some(variance)
-            } else {
-                None
-            }
-        }
-        
-        fn get_standard_deviation(&self) -> Option<f64> {
-            self.get_variance().map(|v| v.sqrt())
-        }
-        
-        fn get_min(&self) -> Option<f64> {
-            self.data.borrow().min
-        }
-        
-        fn get_max(&self) -> Option<f64> {
-            self.data.borrow().max
-        }
-        
-        fn get_median(&self) -> Option<f64> {
-            if !self.keep_values {
-                return None;
-            }
-            
-            let mut data = self.data.borrow_mut();
-            if data.values.is_empty() {
-                return None;
-            }
-            
-            data.values.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            let len = data.values.len();
-            
-            if len % 2 == 0 {
-                Some((data.values[len / 2 - 1] + data.values[len / 2]) / 2.0)
-            } else {
-                Some(data.values[len / 2])
-            }
-        }
-        
-        fn get_summary(&self) -> String {
-            let data = self.data.borrow();
-            
-            if data.count == 0 {
-                return "No data recorded".to_string();
-            }
-            
-            let mean = self.get_mean().unwrap_or(0.0);
-            let std_dev = self.get_standard_deviation().unwrap_or(0.0);
-            let min = self.get_min().unwrap_or(0.0);
-            let max = self.get_max().unwrap_or(0.0);
-            
-            format!(
-                "Statistics Summary:\n  Count: {}\n  Mean: {:.2}\n  Std Dev: {:.2}\n  Min: {:.2}\n  Max: {:.2}",
-                data.count, mean, std_dev, min, max
-            )
-        }
-        
-        fn reset(&self) {
-            *self.data.borrow_mut() = StatisticalData::new();
-        }
-    }
     
     println!("\n【高度なStatistics実装】");
     let stats = AdvancedStatistics::new(true); // 中央値計算を有効化
@@ -266,7 +264,6 @@ fn advanced_statistics_example() {
 
 // エラーハンドリングの例
 fn error_handling_example() {
-    use std::cell::RefCell;
     
     struct SafeStatistics {
         data: RefCell<Vec<f64>>,
@@ -309,7 +306,7 @@ fn error_handling_example() {
             F: FnOnce(&Vec<f64>) -> R,
         {
             match self.data.try_borrow() {
-                Ok(data) => Ok(operation(&*data)),
+                Ok(data) => Ok(operation(&data)),
                 Err(_) => Err("データが他の場所で借用中です".to_string()),
             }
         }
@@ -398,4 +395,103 @@ fn thread_safe_version_note() {
     
     println!("\n✓ 用途に応じて適切な同期プリミティブを選択");
     println!("✓ パフォーマンス要件と安全性のバランスを考慮");
+}
+
+#[cfg(test)]
+mod main_smoke_tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}
+
+#[cfg(test)]
+mod advanced_statistics_tests {
+    use super::AdvancedStatistics;
+
+    fn stats_with(values: &[f64]) -> AdvancedStatistics {
+        let stats = AdvancedStatistics::new(true);
+        for &v in values {
+            stats.record_value(v);
+        }
+        stats
+    }
+
+    const SAMPLE: [f64; 8] = [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
+
+    #[test]
+    fn median_of_odd_count_is_middle_value_after_sorting() {
+        // 5個なら len / 2 = 2 と len % 2 = 1 が異なり、添字の取り違えを検出できる
+        assert_eq!(stats_with(&[9.0, 1.0, 5.0, 7.0, 3.0]).get_median(), Some(5.0));
+    }
+
+    #[test]
+    fn records_count_mean_min_and_max() {
+        let stats = stats_with(&SAMPLE);
+
+        assert_eq!(stats.get_count(), 8);
+        assert_eq!(stats.get_mean(), Some(5.0));
+        assert_eq!(stats.get_min(), Some(2.0));
+        assert_eq!(stats.get_max(), Some(9.0));
+    }
+
+    #[test]
+    fn computes_sample_variance_and_standard_deviation() {
+        let stats = stats_with(&SAMPLE);
+        let variance = 32.0 / 7.0;
+
+        assert!((stats.get_variance().unwrap() - variance).abs() < 1e-12);
+        assert!((stats.get_standard_deviation().unwrap() - variance.sqrt()).abs() < 1e-12);
+    }
+
+    #[test]
+    fn statistics_need_enough_values() {
+        let empty = stats_with(&[]);
+        assert_eq!(empty.get_count(), 0);
+        assert_eq!(empty.get_mean(), None);
+        assert_eq!(empty.get_min(), None);
+        assert_eq!(empty.get_max(), None);
+
+        let single = stats_with(&[3.0]);
+        assert_eq!(single.get_mean(), Some(3.0));
+        assert_eq!(single.get_variance(), None);
+        assert_eq!(single.get_standard_deviation(), None);
+    }
+
+    #[test]
+    fn summary_reports_values_or_no_data() {
+        assert_eq!(stats_with(&[]).get_summary(), "No data recorded");
+        assert_eq!(
+            stats_with(&SAMPLE).get_summary(),
+            format!(
+                "Statistics Summary:\n  Count: 8\n  Mean: 5.00\n  Std Dev: {:.2}\n  Min: 2.00\n  Max: 9.00",
+                (32.0f64 / 7.0).sqrt()
+            )
+        );
+    }
+
+    #[test]
+    fn reset_clears_recorded_values() {
+        let stats = stats_with(&SAMPLE);
+
+        stats.reset();
+
+        assert_eq!(stats.get_count(), 0);
+        assert_eq!(stats.get_mean(), None);
+        assert_eq!(stats.get_median(), None);
+    }
+
+    #[test]
+    fn median_of_even_count_is_mean_of_middle_pair() {
+        assert_eq!(stats_with(&[4.0, 1.0, 3.0, 2.0]).get_median(), Some(2.5));
+    }
+
+    #[test]
+    fn median_is_none_when_empty_or_values_not_kept() {
+        assert_eq!(stats_with(&[]).get_median(), None);
+
+        let no_values = AdvancedStatistics::new(false);
+        no_values.record_value(1.0);
+        assert_eq!(no_values.get_median(), None);
+    }
 }
