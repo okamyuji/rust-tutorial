@@ -83,3 +83,11 @@ fn struct_field_borrowing() {
 
     println!("更新後のスコア: {}", player.score);
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}

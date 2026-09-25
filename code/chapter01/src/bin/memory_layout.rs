@@ -29,3 +29,11 @@ fn main() {
     println!("Box構造体のアドレス: {:p}", &b);
     println!("ヒープ上のデータアドレス: {:p}", &*b);
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}

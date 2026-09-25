@@ -60,3 +60,11 @@ fn main() {
         std::mem::size_of::<Arc<i32>>()
     );
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}

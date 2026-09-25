@@ -99,3 +99,11 @@ fn deadlock_prevention() {
 
     println!("デッドロックなしで完了！");
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}

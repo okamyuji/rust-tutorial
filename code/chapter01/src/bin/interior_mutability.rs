@@ -134,3 +134,11 @@ fn practical_example() {
     println!("ノード1の参照カウント: {}", Rc::strong_count(&node1));
     println!("ノード1の値: {}", node1.value);
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}

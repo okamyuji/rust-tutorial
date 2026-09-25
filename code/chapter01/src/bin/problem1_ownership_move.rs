@@ -85,3 +85,11 @@ fn main() {
         println!("借用は参照の作成のみなので、ほぼコストゼロ");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}

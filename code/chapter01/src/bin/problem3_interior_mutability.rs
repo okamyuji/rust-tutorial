@@ -1,7 +1,134 @@
 // src/bin/problem3_interior_mutability.rs
 // 復習問題3: 内部可変性パターンの解答
 
-// Cell と RefCell は各関数内で個別にインポート
+use std::cell::{Cell, RefCell};
+
+// カウンターの実装
+struct Counter {
+    value: Cell<i32>, // Copyトレイトを実装する型
+}
+
+impl Counter {
+    fn new() -> Self {
+        Counter {
+            value: Cell::new(0),
+        }
+    }
+
+    // 不変参照でも更新可能
+    fn increment(&self) {
+        let current = self.value.get();
+        self.value.set(current + 1);
+    }
+
+    fn get(&self) -> i32 {
+        self.value.get()
+    }
+
+    fn reset(&self) {
+        self.value.set(0);
+    }
+}
+
+// 設定値の管理
+struct Config {
+    debug_mode: Cell<bool>,
+    max_connections: Cell<u32>,
+}
+
+impl Config {
+    fn new() -> Self {
+        Config {
+            debug_mode: Cell::new(false),
+            max_connections: Cell::new(100),
+        }
+    }
+
+    fn enable_debug(&self) {
+        self.debug_mode.set(true);
+    }
+
+    fn set_max_connections(&self, max: u32) {
+        self.max_connections.set(max);
+    }
+
+    fn is_debug_enabled(&self) -> bool {
+        self.debug_mode.get()
+    }
+}
+
+// 図書館システム
+struct Library {
+    books: RefCell<Vec<String>>, // 複雑な型、借用が必要
+}
+
+impl Library {
+    fn new() -> Self {
+        Library {
+            books: RefCell::new(Vec::new()),
+        }
+    }
+
+    fn add_book(&self, book: String) {
+        self.books.borrow_mut().push(book);
+    }
+
+    fn remove_book(&self, title: &str) -> bool {
+        let mut books = self.books.borrow_mut();
+        if let Some(pos) = books.iter().position(|x| x == title) {
+            books.remove(pos);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn get_books(&self) -> Vec<String> {
+        self.books.borrow().clone()
+    }
+
+    fn book_count(&self) -> usize {
+        self.books.borrow().len()
+    }
+
+    fn search_books(&self, query: &str) -> Vec<String> {
+        self.books
+            .borrow()
+            .iter()
+            .filter(|book| book.contains(query))
+            .cloned()
+            .collect()
+    }
+}
+
+// キャッシュシステム
+struct Cache {
+    data: RefCell<std::collections::HashMap<String, String>>,
+}
+
+impl Cache {
+    fn new() -> Self {
+        Cache {
+            data: RefCell::new(std::collections::HashMap::new()),
+        }
+    }
+
+    fn get(&self, key: &str) -> Option<String> {
+        self.data.borrow().get(key).cloned()
+    }
+
+    fn set(&self, key: String, value: String) {
+        self.data.borrow_mut().insert(key, value);
+    }
+
+    fn contains(&self, key: &str) -> bool {
+        self.data.borrow().contains_key(key)
+    }
+
+    fn clear(&self) {
+        self.data.borrow_mut().clear();
+    }
+}
 
 fn main() {
     println!("=== 復習問題3: 内部可変性（Cell vs RefCell）===\n");
@@ -30,35 +157,6 @@ fn main() {
 
 // Cell<T>の使用例
 fn cell_examples() {
-    use std::cell::Cell;
-
-    // カウンターの実装
-    struct Counter {
-        value: Cell<i32>, // Copyトレイトを実装する型
-    }
-
-    impl Counter {
-        fn new() -> Self {
-            Counter {
-                value: Cell::new(0),
-            }
-        }
-
-        // 不変参照でも更新可能
-        fn increment(&self) {
-            let current = self.value.get();
-            self.value.set(current + 1);
-        }
-
-        fn get(&self) -> i32 {
-            self.value.get()
-        }
-
-        fn reset(&self) {
-            self.value.set(0);
-        }
-    }
-
     println!("【Cellを使ったカウンター】");
     let counter = Counter::new();
 
@@ -68,33 +166,6 @@ fn cell_examples() {
     println!("インクリメント後: {}", counter.get());
     counter.reset();
     println!("リセット後: {}", counter.get());
-
-    // 設定値の管理
-    struct Config {
-        debug_mode: Cell<bool>,
-        max_connections: Cell<u32>,
-    }
-
-    impl Config {
-        fn new() -> Self {
-            Config {
-                debug_mode: Cell::new(false),
-                max_connections: Cell::new(100),
-            }
-        }
-
-        fn enable_debug(&self) {
-            self.debug_mode.set(true);
-        }
-
-        fn set_max_connections(&self, max: u32) {
-            self.max_connections.set(max);
-        }
-
-        fn is_debug_enabled(&self) -> bool {
-            self.debug_mode.get()
-        }
-    }
 
     println!("\n【Cellを使った設定管理】");
     let config = Config::new();
@@ -111,52 +182,6 @@ fn cell_examples() {
 
 // RefCell<T>の使用例
 fn refcell_examples() {
-    use std::cell::RefCell;
-
-    // 図書館システム
-    struct Library {
-        books: RefCell<Vec<String>>, // 複雑な型、借用が必要
-    }
-
-    impl Library {
-        fn new() -> Self {
-            Library {
-                books: RefCell::new(Vec::new()),
-            }
-        }
-
-        fn add_book(&self, book: String) {
-            self.books.borrow_mut().push(book);
-        }
-
-        fn remove_book(&self, title: &str) -> bool {
-            let mut books = self.books.borrow_mut();
-            if let Some(pos) = books.iter().position(|x| x == title) {
-                books.remove(pos);
-                true
-            } else {
-                false
-            }
-        }
-
-        fn get_books(&self) -> Vec<String> {
-            self.books.borrow().clone()
-        }
-
-        fn book_count(&self) -> usize {
-            self.books.borrow().len()
-        }
-
-        fn search_books(&self, query: &str) -> Vec<String> {
-            self.books
-                .borrow()
-                .iter()
-                .filter(|book| book.contains(query))
-                .cloned()
-                .collect()
-        }
-    }
-
     println!("【RefCellを使った図書館システム】");
     let library = Library::new();
 
@@ -172,35 +197,6 @@ fn refcell_examples() {
 
     library.remove_book("Web Development");
     println!("削除後の蔵書: {:?}", library.get_books());
-
-    // キャッシュシステム
-    struct Cache {
-        data: RefCell<std::collections::HashMap<String, String>>,
-    }
-
-    impl Cache {
-        fn new() -> Self {
-            Cache {
-                data: RefCell::new(std::collections::HashMap::new()),
-            }
-        }
-
-        fn get(&self, key: &str) -> Option<String> {
-            self.data.borrow().get(key).cloned()
-        }
-
-        fn set(&self, key: String, value: String) {
-            self.data.borrow_mut().insert(key, value);
-        }
-
-        fn contains(&self, key: &str) -> bool {
-            self.data.borrow().contains_key(key)
-        }
-
-        fn clear(&self) {
-            self.data.borrow_mut().clear();
-        }
-    }
 
     println!("\n【RefCellを使ったキャッシュシステム】");
     let cache = Cache::new();
@@ -226,8 +222,6 @@ fn refcell_examples() {
 
 // 使い分けの比較例
 fn comparison_examples() {
-    use std::cell::{Cell, RefCell};
-
     println!("【パフォーマンス比較】");
 
     // Cell<T>の場合
@@ -270,8 +264,6 @@ fn comparison_examples() {
 
 // エラーハンドリングの例
 fn error_handling_examples() {
-    use std::cell::RefCell;
-
     let data = RefCell::new(vec![1, 2, 3]);
 
     println!("【借用ルール違反でパニックする例】");
@@ -313,4 +305,69 @@ fn error_handling_examples() {
     println!("\n✓ try_borrow/try_borrow_mutを使用してパニックを回避");
     println!("✓ 借用の状態を事前にチェック可能");
     println!("✓ エラーハンドリングにより堅牢なコードが書ける");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn counter_increments_through_shared_reference_and_resets() {
+        let counter = Counter::new();
+        assert_eq!(counter.get(), 0);
+
+        counter.increment();
+        counter.increment();
+        assert_eq!(counter.get(), 2);
+
+        counter.reset();
+        assert_eq!(counter.get(), 0);
+    }
+
+    #[test]
+    fn config_updates_through_shared_reference() {
+        let config = Config::new();
+        assert!(!config.is_debug_enabled());
+        assert_eq!(config.max_connections.get(), 100);
+
+        config.enable_debug();
+        config.set_max_connections(500);
+
+        assert!(config.is_debug_enabled());
+        assert_eq!(config.max_connections.get(), 500);
+    }
+
+    #[test]
+    fn library_adds_searches_and_removes_books() {
+        let library = Library::new();
+        library.add_book("Rust Programming".to_string());
+        library.add_book("Web Development".to_string());
+
+        assert_eq!(library.book_count(), 2);
+        assert_eq!(library.search_books("Rust"), vec!["Rust Programming"]);
+        assert!(library.search_books("Go").is_empty());
+
+        assert!(library.remove_book("Web Development"));
+        assert!(!library.remove_book("Web Development"));
+        assert_eq!(library.get_books(), vec!["Rust Programming"]);
+    }
+
+    #[test]
+    fn cache_sets_gets_and_clears_entries() {
+        let cache = Cache::new();
+        cache.set("user:1".to_string(), "Alice".to_string());
+
+        assert_eq!(cache.get("user:1"), Some("Alice".to_string()));
+        assert_eq!(cache.get("user:2"), None);
+        assert!(cache.contains("user:1"));
+
+        cache.clear();
+
+        assert!(!cache.contains("user:1"));
+    }
+
+    #[test]
+    fn main_runs_without_panicking() {
+        main();
+    }
 }

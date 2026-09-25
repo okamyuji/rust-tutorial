@@ -63,3 +63,11 @@ fn nll_demonstration() {
     // 古いコンパイラではr1のスコープがブロック終了まで続いていたが、
     // NLLでは最後の使用箇所で借用が終了する
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}

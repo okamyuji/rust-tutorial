@@ -57,3 +57,11 @@ fn modify_and_return(mut buffer: Buffer) -> Buffer {
     buffer.name.push_str("_modified");
     buffer // 所有権を呼び出し元に返す
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}

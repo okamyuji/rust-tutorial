@@ -59,3 +59,11 @@ fn demonstrate_scope_and_drop() {
 
     println!("スコープ外: メモリは解放済み");
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_runs_without_panicking() {
+        super::main();
+    }
+}
