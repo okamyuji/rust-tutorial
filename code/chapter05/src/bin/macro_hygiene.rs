@@ -22,8 +22,8 @@ macro_rules! create_variable {
 // スコープの分離を示すマクロ
 macro_rules! isolated_scope {
     () => {
-        let secret = "マクロ内の秘密";
-        println!("マクロ内: {}", secret);
+        let hidden = "マクロ内だけの値";
+        println!("マクロ内: {}", hidden);
     };
 }
 
@@ -140,7 +140,7 @@ fn main() {
     // スコープの分離
     println!("\n--- スコープの分離 ---");
     isolated_scope!();
-    // println!("{}", secret);  // エラー：secretは見えない
+    // println!("{}", hidden);  // エラー：hiddenは見えない
 
     // ラベルの衛生性
     println!("\n--- ラベルの衛生性 ---");
