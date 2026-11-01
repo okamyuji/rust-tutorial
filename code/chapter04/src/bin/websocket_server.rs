@@ -264,7 +264,7 @@ impl WebSocketServer {
     // メッセージをブロードキャスト
     pub async fn broadcast_message(&self, content: String) {
         let clients = self.clients.read().await;
-        let message = Message::Text(content);
+        let message = Message::Text(content.into());
 
         for (id, client) in clients.iter() {
             if client.sender.send(message.clone()).is_err() {
@@ -278,7 +278,7 @@ impl WebSocketServer {
         let clients = self.clients.read().await;
 
         if let Some(client) = clients.get(&client_id) {
-            let message = Message::Text(content);
+            let message = Message::Text(content.into());
             client
                 .sender
                 .send(message)
@@ -420,9 +420,6 @@ mod broadcast_tests {
 
         server.broadcast_message("hello".to_string()).await;
 
-        assert_eq!(
-            live_rx.try_recv().unwrap(),
-            Message::Text("hello".to_string())
-        );
+        assert_eq!(live_rx.try_recv().unwrap(), Message::Text("hello".into()));
     }
 }
